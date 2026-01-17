@@ -4,7 +4,10 @@
       "Bash(.\\\\gradlew.bat assembleDebug:*)",
       "Bash(cmd.exe /c:*)",
       "Bash(powershell -Command \"./gradlew.bat assembleDebug 2>&1\")",
-      "Bash(powershell -Command \"./gradlew.bat assembleDebug --stacktrace 2>&1\")"
+      "Bash(powershell -Command \"./gradlew.bat assembleDebug --stacktrace 2>&1\")",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(dir:*)"
     ]
   }
 }
