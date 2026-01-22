@@ -66,16 +66,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.lifedots.preferences.AnimationType
 import com.example.lifedots.preferences.DotShape
 import com.example.lifedots.preferences.DotSize
 import com.example.lifedots.preferences.DotStyle
+import com.example.lifedots.preferences.FluidStyle
+import com.example.lifedots.preferences.GlassStyle
 import com.example.lifedots.preferences.Goal
 import com.example.lifedots.preferences.GoalPosition
 import com.example.lifedots.preferences.GridDensity
 import com.example.lifedots.preferences.LifeDotsPreferences
 import com.example.lifedots.preferences.TextAlignment
 import com.example.lifedots.preferences.ThemeOption
+import com.example.lifedots.preferences.TreeStyle
 import com.example.lifedots.preferences.ViewMode
+import com.example.lifedots.preferences.VisualTheme
 import com.example.lifedots.ui.components.ColorButton
 import com.example.lifedots.ui.components.ColorPickerDialog
 import com.example.lifedots.ui.components.GoalEditorDialog
@@ -122,6 +127,10 @@ fun SettingsScreen(
     var showFooterColorPicker by remember { mutableStateOf(false) }
     var showGoalEditor by remember { mutableStateOf(false) }
     var editingGoal by remember { mutableStateOf<Goal?>(null) }
+    var showGlassTintPicker by remember { mutableStateOf(false) }
+    var showTreeTrunkColorPicker by remember { mutableStateOf(false) }
+    var showTreeLeafColorPicker by remember { mutableStateOf(false) }
+    var showTreeBloomColorPicker by remember { mutableStateOf(false) }
 
     // Permission state for image picker
     var hasImagePermission by remember {
@@ -915,6 +924,639 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // ===== Position & Scale Section =====
+        SettingsSection(title = "Position & Scale") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    // Horizontal Offset
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Horizontal Offset",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${settings.positionSettings.horizontalOffset.roundToInt()}%",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    Slider(
+                        value = settings.positionSettings.horizontalOffset,
+                        onValueChange = { preferences.setHorizontalOffset(it) },
+                        valueRange = -50f..50f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Vertical Offset
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Vertical Offset",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${settings.positionSettings.verticalOffset.roundToInt()}%",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    Slider(
+                        value = settings.positionSettings.verticalOffset,
+                        onValueChange = { preferences.setVerticalOffset(it) },
+                        valueRange = -50f..50f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Scale
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Scale",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${(settings.positionSettings.scale * 100).roundToInt()}%",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    Slider(
+                        value = settings.positionSettings.scale,
+                        onValueChange = { preferences.setScale(it) },
+                        valueRange = 0.5f..1.5f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ===== Animation Section =====
+        SettingsSection(title = "Animation") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Enable Animation", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Switch(
+                            checked = settings.animationSettings.enabled,
+                            onCheckedChange = { preferences.setAnimationEnabled(it) }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = settings.animationSettings.enabled,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Animation Type", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                AnimationTypeOption(
+                                    label = "Fade",
+                                    type = AnimationType.FADE_IN,
+                                    isSelected = settings.animationSettings.type == AnimationType.FADE_IN,
+                                    onClick = { preferences.setAnimationType(AnimationType.FADE_IN) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                AnimationTypeOption(
+                                    label = "Pulse",
+                                    type = AnimationType.PULSE,
+                                    isSelected = settings.animationSettings.type == AnimationType.PULSE,
+                                    onClick = { preferences.setAnimationType(AnimationType.PULSE) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                AnimationTypeOption(
+                                    label = "Wave",
+                                    type = AnimationType.WAVE,
+                                    isSelected = settings.animationSettings.type == AnimationType.WAVE,
+                                    onClick = { preferences.setAnimationType(AnimationType.WAVE) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                AnimationTypeOption(
+                                    label = "Breathe",
+                                    type = AnimationType.BREATHE,
+                                    isSelected = settings.animationSettings.type == AnimationType.BREATHE,
+                                    onClick = { preferences.setAnimationType(AnimationType.BREATHE) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                AnimationTypeOption(
+                                    label = "Ripple",
+                                    type = AnimationType.RIPPLE,
+                                    isSelected = settings.animationSettings.type == AnimationType.RIPPLE,
+                                    onClick = { preferences.setAnimationType(AnimationType.RIPPLE) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                AnimationTypeOption(
+                                    label = "Cascade",
+                                    type = AnimationType.CASCADE,
+                                    isSelected = settings.animationSettings.type == AnimationType.CASCADE,
+                                    onClick = { preferences.setAnimationType(AnimationType.CASCADE) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Speed
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Speed", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${(settings.animationSettings.speed * 100).roundToInt()}%", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.animationSettings.speed,
+                                onValueChange = { preferences.setAnimationSpeed(it) },
+                                valueRange = 0.5f..2f
+                            )
+
+                            // Intensity
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Intensity", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${(settings.animationSettings.intensity * 100).roundToInt()}%", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.animationSettings.intensity,
+                                onValueChange = { preferences.setAnimationIntensity(it) },
+                                valueRange = 0.1f..1f
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ===== Glass Effect Section =====
+        SettingsSection(title = "Glass Effect") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Enable Glass Effect", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Switch(
+                            checked = settings.glassEffectSettings.enabled,
+                            onCheckedChange = { preferences.setGlassEnabled(it) }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = settings.glassEffectSettings.enabled,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Glass Style", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                GlassStyleOption(
+                                    label = "Light",
+                                    style = GlassStyle.LIGHT_FROST,
+                                    isSelected = settings.glassEffectSettings.style == GlassStyle.LIGHT_FROST,
+                                    onClick = { preferences.setGlassStyle(GlassStyle.LIGHT_FROST) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                GlassStyleOption(
+                                    label = "Heavy",
+                                    style = GlassStyle.HEAVY_FROST,
+                                    isSelected = settings.glassEffectSettings.style == GlassStyle.HEAVY_FROST,
+                                    onClick = { preferences.setGlassStyle(GlassStyle.HEAVY_FROST) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                GlassStyleOption(
+                                    label = "Acrylic",
+                                    style = GlassStyle.ACRYLIC,
+                                    isSelected = settings.glassEffectSettings.style == GlassStyle.ACRYLIC,
+                                    onClick = { preferences.setGlassStyle(GlassStyle.ACRYLIC) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                GlassStyleOption(
+                                    label = "Crystal",
+                                    style = GlassStyle.CRYSTAL,
+                                    isSelected = settings.glassEffectSettings.style == GlassStyle.CRYSTAL,
+                                    onClick = { preferences.setGlassStyle(GlassStyle.CRYSTAL) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                GlassStyleOption(
+                                    label = "Ice",
+                                    style = GlassStyle.ICE,
+                                    isSelected = settings.glassEffectSettings.style == GlassStyle.ICE,
+                                    onClick = { preferences.setGlassStyle(GlassStyle.ICE) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Blur
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Blur", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${settings.glassEffectSettings.blur.roundToInt()}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.glassEffectSettings.blur,
+                                onValueChange = { preferences.setGlassBlur(it) },
+                                valueRange = 0f..25f
+                            )
+
+                            // Opacity
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Opacity", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${(settings.glassEffectSettings.opacity * 100).roundToInt()}%", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.glassEffectSettings.opacity,
+                                onValueChange = { preferences.setGlassOpacity(it) },
+                                valueRange = 0.1f..0.9f
+                            )
+
+                            // Tint Color
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Tint Color", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(settings.glassEffectSettings.tint))
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                        .clickable { showGlassTintPicker = true }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ===== Tree Effect Section =====
+        SettingsSection(title = "Tree Growth Effect") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Enable Tree Effect", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Replaces dot grid with tree", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        }
+                        Switch(
+                            checked = settings.treeEffectSettings.enabled,
+                            onCheckedChange = { preferences.setTreeEnabled(it) }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = settings.treeEffectSettings.enabled,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Tree Style", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                TreeStyleOption(
+                                    label = "Simple",
+                                    style = TreeStyle.SIMPLE,
+                                    isSelected = settings.treeEffectSettings.style == TreeStyle.SIMPLE,
+                                    onClick = { preferences.setTreeStyle(TreeStyle.SIMPLE) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TreeStyleOption(
+                                    label = "Detailed",
+                                    style = TreeStyle.DETAILED,
+                                    isSelected = settings.treeEffectSettings.style == TreeStyle.DETAILED,
+                                    onClick = { preferences.setTreeStyle(TreeStyle.DETAILED) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TreeStyleOption(
+                                    label = "Bonsai",
+                                    style = TreeStyle.BONSAI,
+                                    isSelected = settings.treeEffectSettings.style == TreeStyle.BONSAI,
+                                    onClick = { preferences.setTreeStyle(TreeStyle.BONSAI) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                TreeStyleOption(
+                                    label = "Sakura",
+                                    style = TreeStyle.SAKURA,
+                                    isSelected = settings.treeEffectSettings.style == TreeStyle.SAKURA,
+                                    onClick = { preferences.setTreeStyle(TreeStyle.SAKURA) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TreeStyleOption(
+                                    label = "Willow",
+                                    style = TreeStyle.WILLOW,
+                                    isSelected = settings.treeEffectSettings.style == TreeStyle.WILLOW,
+                                    onClick = { preferences.setTreeStyle(TreeStyle.WILLOW) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Tree Colors
+                            Text("Colors", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(settings.treeEffectSettings.trunkColor))
+                                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                            .clickable { showTreeTrunkColorPicker = true }
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Trunk", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(settings.treeEffectSettings.leafColor))
+                                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                            .clickable { showTreeLeafColorPicker = true }
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Leaf", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(settings.treeEffectSettings.bloomColor))
+                                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                            .clickable { showTreeBloomColorPicker = true }
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Bloom", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Show Ground", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Switch(
+                                    checked = settings.treeEffectSettings.showGround,
+                                    onCheckedChange = { preferences.setTreeShowGround(it) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ===== Fluid Effect Section =====
+        SettingsSection(title = "Fluid Effect") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Enable Fluid Effect", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Animated background effect", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        }
+                        Switch(
+                            checked = settings.fluidEffectSettings.enabled,
+                            onCheckedChange = { preferences.setFluidEnabled(it) }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = settings.fluidEffectSettings.enabled,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Fluid Style", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FluidStyleOption(
+                                    label = "Water",
+                                    style = FluidStyle.WATER,
+                                    isSelected = settings.fluidEffectSettings.style == FluidStyle.WATER,
+                                    onClick = { preferences.setFluidStyle(FluidStyle.WATER) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FluidStyleOption(
+                                    label = "Lava",
+                                    style = FluidStyle.LAVA,
+                                    isSelected = settings.fluidEffectSettings.style == FluidStyle.LAVA,
+                                    onClick = { preferences.setFluidStyle(FluidStyle.LAVA) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FluidStyleOption(
+                                    label = "Mercury",
+                                    style = FluidStyle.MERCURY,
+                                    isSelected = settings.fluidEffectSettings.style == FluidStyle.MERCURY,
+                                    onClick = { preferences.setFluidStyle(FluidStyle.MERCURY) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FluidStyleOption(
+                                    label = "Plasma",
+                                    style = FluidStyle.PLASMA,
+                                    isSelected = settings.fluidEffectSettings.style == FluidStyle.PLASMA,
+                                    onClick = { preferences.setFluidStyle(FluidStyle.PLASMA) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FluidStyleOption(
+                                    label = "Aurora",
+                                    style = FluidStyle.AURORA,
+                                    isSelected = settings.fluidEffectSettings.style == FluidStyle.AURORA,
+                                    onClick = { preferences.setFluidStyle(FluidStyle.AURORA) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Flow Speed
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Flow Speed", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${(settings.fluidEffectSettings.flowSpeed * 100).roundToInt()}%", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.fluidEffectSettings.flowSpeed,
+                                onValueChange = { preferences.setFluidFlowSpeed(it) },
+                                valueRange = 0.1f..2f
+                            )
+
+                            // Turbulence
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Turbulence", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${(settings.fluidEffectSettings.turbulence * 100).roundToInt()}%", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.fluidEffectSettings.turbulence,
+                                onValueChange = { preferences.setFluidTurbulence(it) },
+                                valueRange = 0.1f..1f
+                            )
+
+                            // Color Intensity
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Color Intensity", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${(settings.fluidEffectSettings.colorIntensity * 100).roundToInt()}%", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.fluidEffectSettings.colorIntensity,
+                                onValueChange = { preferences.setFluidColorIntensity(it) },
+                                valueRange = 0.1f..1f
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         // ===== Feature 6: Goal Tracking Section =====
         SettingsSection(title = "Goal Countdown") {
             Surface(
@@ -1081,6 +1723,58 @@ fun SettingsScreen(
                 showGoalEditor = false
                 editingGoal = null
             }
+        )
+    }
+
+    // Glass tint color picker
+    if (showGlassTintPicker) {
+        ColorPickerDialog(
+            initialColor = settings.glassEffectSettings.tint,
+            title = "Glass Tint Color",
+            onColorSelected = {
+                preferences.setGlassTint(it)
+                showGlassTintPicker = false
+            },
+            onDismiss = { showGlassTintPicker = false }
+        )
+    }
+
+    // Tree trunk color picker
+    if (showTreeTrunkColorPicker) {
+        ColorPickerDialog(
+            initialColor = settings.treeEffectSettings.trunkColor,
+            title = "Trunk Color",
+            onColorSelected = {
+                preferences.setTreeTrunkColor(it)
+                showTreeTrunkColorPicker = false
+            },
+            onDismiss = { showTreeTrunkColorPicker = false }
+        )
+    }
+
+    // Tree leaf color picker
+    if (showTreeLeafColorPicker) {
+        ColorPickerDialog(
+            initialColor = settings.treeEffectSettings.leafColor,
+            title = "Leaf Color",
+            onColorSelected = {
+                preferences.setTreeLeafColor(it)
+                showTreeLeafColorPicker = false
+            },
+            onDismiss = { showTreeLeafColorPicker = false }
+        )
+    }
+
+    // Tree bloom color picker
+    if (showTreeBloomColorPicker) {
+        ColorPickerDialog(
+            initialColor = settings.treeEffectSettings.bloomColor,
+            title = "Bloom Color",
+            onColorSelected = {
+                preferences.setTreeBloomColor(it)
+                showTreeBloomColorPicker = false
+            },
+            onDismiss = { showTreeBloomColorPicker = false }
         )
     }
 }
@@ -1691,6 +2385,270 @@ fun GoalItem(
                 text = dateFormatter.format(Date(goal.targetDate)),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimationTypeOption(
+    label: String,
+    type: AnimationType,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier.size(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Animation preview icons
+                when (type) {
+                    AnimationType.FADE_IN -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface))
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)))
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)))
+                        }
+                    }
+                    AnimationType.PULSE -> {
+                        Box(modifier = Modifier.size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)))
+                        Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface))
+                    }
+                    AnimationType.WAVE -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface))
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)))
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)))
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)))
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)))
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface))
+                            }
+                        }
+                    }
+                    AnimationType.BREATHE -> {
+                        Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)))
+                    }
+                    AnimationType.RIPPLE -> {
+                        Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)))
+                        Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)))
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface))
+                    }
+                    AnimationType.CASCADE -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            repeat(3) { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    repeat(3) { col ->
+                                        val alpha = if (row * 3 + col < 5) 1f else 0.3f
+                                        Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    AnimationType.NONE -> {
+                        Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface))
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = label,
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+fun GlassStyleOption(
+    label: String,
+    style: GlassStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        when (style) {
+                            GlassStyle.LIGHT_FROST -> Color.White.copy(alpha = 0.4f)
+                            GlassStyle.HEAVY_FROST -> Color.White.copy(alpha = 0.7f)
+                            GlassStyle.ACRYLIC -> Color(0xFFE0E8F0).copy(alpha = 0.6f)
+                            GlassStyle.CRYSTAL -> Color(0xFFE8F4FF).copy(alpha = 0.5f)
+                            GlassStyle.ICE -> Color(0xFFD0E8FF).copy(alpha = 0.6f)
+                            GlassStyle.NONE -> Color.Transparent
+                        }
+                    )
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = label,
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+fun TreeStyleOption(
+    label: String,
+    style: TreeStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier.size(32.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Canvas(modifier = Modifier.size(32.dp)) {
+                    val trunkColor = Color(0xFF8B4513)
+                    val leafColor = when (style) {
+                        TreeStyle.SAKURA -> Color(0xFFFF69B4)
+                        else -> Color(0xFF228B22)
+                    }
+
+                    // Draw trunk
+                    drawRect(
+                        color = trunkColor,
+                        topLeft = androidx.compose.ui.geometry.Offset(size.width / 2 - 2, size.height * 0.5f),
+                        size = androidx.compose.ui.geometry.Size(4f, size.height * 0.5f)
+                    )
+
+                    // Draw foliage based on style
+                    when (style) {
+                        TreeStyle.SIMPLE -> {
+                            val path = Path().apply {
+                                moveTo(size.width / 2, size.height * 0.1f)
+                                lineTo(size.width * 0.2f, size.height * 0.5f)
+                                lineTo(size.width * 0.8f, size.height * 0.5f)
+                                close()
+                            }
+                            drawPath(path, leafColor)
+                        }
+                        TreeStyle.DETAILED, TreeStyle.WILLOW -> {
+                            drawCircle(leafColor, radius = size.width * 0.35f, center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height * 0.3f))
+                        }
+                        TreeStyle.BONSAI -> {
+                            drawOval(leafColor, topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.15f, size.height * 0.15f), size = androidx.compose.ui.geometry.Size(size.width * 0.7f, size.height * 0.35f))
+                        }
+                        TreeStyle.SAKURA -> {
+                            drawCircle(leafColor, radius = size.width * 0.3f, center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height * 0.3f))
+                            // Add small dots for blossoms
+                            for (i in 0 until 5) {
+                                drawCircle(Color.White.copy(alpha = 0.8f), radius = 2f, center = androidx.compose.ui.geometry.Offset(size.width * (0.3f + i * 0.1f), size.height * (0.2f + (i % 2) * 0.15f)))
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = label,
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+fun FluidStyleOption(
+    label: String,
+    style: FluidStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        when (style) {
+                            FluidStyle.WATER -> Color(0xFF4488CC)
+                            FluidStyle.LAVA -> Color(0xFFFF6600)
+                            FluidStyle.MERCURY -> Color(0xFFB8B8C8)
+                            FluidStyle.PLASMA -> Color(0xFF8844FF)
+                            FluidStyle.AURORA -> Color(0xFF44FF88)
+                            FluidStyle.NONE -> Color.Transparent
+                        }
+                    )
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = label,
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }

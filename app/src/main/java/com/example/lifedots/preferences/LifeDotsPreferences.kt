@@ -97,6 +97,98 @@ data class CustomColors(
     val todayDotColor: Int = 0xFF5BA0E9.toInt()
 )
 
+// ===== NEW ADVANCED FEATURES =====
+
+// Custom Positioning & Scaling
+data class PositionSettings(
+    val horizontalOffset: Float = 0f,  // -50 to 50 percent
+    val verticalOffset: Float = 0f,    // -50 to 50 percent
+    val scale: Float = 1.0f            // 0.5 to 1.5
+)
+
+// Animation Types
+enum class AnimationType {
+    NONE,
+    FADE_IN,
+    PULSE,
+    WAVE,
+    BREATHE,
+    RIPPLE,
+    CASCADE
+}
+
+data class AnimationSettings(
+    val enabled: Boolean = false,
+    val type: AnimationType = AnimationType.NONE,
+    val speed: Float = 1.0f,           // 0.5 to 2.0
+    val intensity: Float = 0.5f        // 0.1 to 1.0
+)
+
+// Glass/Frosted Effect
+enum class GlassStyle {
+    NONE,
+    LIGHT_FROST,
+    HEAVY_FROST,
+    ACRYLIC,
+    CRYSTAL,
+    ICE
+}
+
+data class GlassEffectSettings(
+    val enabled: Boolean = false,
+    val style: GlassStyle = GlassStyle.NONE,
+    val blur: Float = 10f,             // 0 to 25
+    val opacity: Float = 0.3f,         // 0.1 to 0.9
+    val tint: Int = 0x80FFFFFF.toInt() // Tint color with alpha
+)
+
+// Tree Growth Effect
+enum class TreeStyle {
+    SIMPLE,
+    DETAILED,
+    BONSAI,
+    SAKURA,
+    WILLOW
+}
+
+data class TreeEffectSettings(
+    val enabled: Boolean = false,
+    val style: TreeStyle = TreeStyle.SIMPLE,
+    val trunkColor: Int = 0xFF8B4513.toInt(),
+    val leafColor: Int = 0xFF228B22.toInt(),
+    val bloomColor: Int = 0xFFFF69B4.toInt(),
+    val showGround: Boolean = true
+)
+
+// Fluid/Liquid Effects
+enum class FluidStyle {
+    NONE,
+    WATER,
+    LAVA,
+    MERCURY,
+    PLASMA,
+    AURORA
+}
+
+data class FluidEffectSettings(
+    val enabled: Boolean = false,
+    val style: FluidStyle = FluidStyle.NONE,
+    val flowSpeed: Float = 1.0f,
+    val turbulence: Float = 0.5f,
+    val colorIntensity: Float = 0.7f
+)
+
+// Special Visual Mode combining multiple effects
+enum class VisualTheme {
+    CLASSIC,           // Default dot grid
+    MINIMALIST,        // Clean, simple
+    CYBERPUNK,         // Neon, glowing
+    NATURE,            // Tree growth
+    FLUID,             // Liquid effects
+    GLASS,             // Frosted glass
+    COSMIC             // Space-themed
+}
+
 data class WallpaperSettings(
     val theme: ThemeOption = ThemeOption.DARK,
     val dotSize: DotSize = DotSize.MEDIUM,
@@ -106,13 +198,20 @@ data class WallpaperSettings(
     val filledDotAlpha: Float = 1.0f,
     val emptyDotAlpha: Float = 1.0f,
     val customColors: CustomColors = CustomColors(),
-    // New feature settings
+    // Feature settings
     val dotEffectSettings: DotEffectSettings = DotEffectSettings(),
     val footerTextSettings: FooterTextSettings = FooterTextSettings(),
     val viewModeSettings: ViewModeSettings = ViewModeSettings(),
     val calendarViewSettings: CalendarViewSettings = CalendarViewSettings(),
     val backgroundSettings: BackgroundSettings = BackgroundSettings(),
-    val goalSettings: GoalSettings = GoalSettings()
+    val goalSettings: GoalSettings = GoalSettings(),
+    // Advanced feature settings
+    val positionSettings: PositionSettings = PositionSettings(),
+    val animationSettings: AnimationSettings = AnimationSettings(),
+    val glassEffectSettings: GlassEffectSettings = GlassEffectSettings(),
+    val treeEffectSettings: TreeEffectSettings = TreeEffectSettings(),
+    val fluidEffectSettings: FluidEffectSettings = FluidEffectSettings(),
+    val visualTheme: VisualTheme = VisualTheme.CLASSIC
 )
 
 class LifeDotsPreferences(context: Context) {
@@ -183,6 +282,51 @@ class LifeDotsPreferences(context: Context) {
             position = GoalPosition.valueOf(prefs.getString(KEY_GOALS_POSITION, GoalPosition.TOP.name) ?: GoalPosition.TOP.name)
         )
 
+        // Position Settings
+        val positionSettings = PositionSettings(
+            horizontalOffset = prefs.getFloat(KEY_HORIZONTAL_OFFSET, 0f),
+            verticalOffset = prefs.getFloat(KEY_VERTICAL_OFFSET, 0f),
+            scale = prefs.getFloat(KEY_SCALE, 1.0f)
+        )
+
+        // Animation Settings
+        val animationSettings = AnimationSettings(
+            enabled = prefs.getBoolean(KEY_ANIMATION_ENABLED, false),
+            type = AnimationType.valueOf(prefs.getString(KEY_ANIMATION_TYPE, AnimationType.NONE.name) ?: AnimationType.NONE.name),
+            speed = prefs.getFloat(KEY_ANIMATION_SPEED, 1.0f),
+            intensity = prefs.getFloat(KEY_ANIMATION_INTENSITY, 0.5f)
+        )
+
+        // Glass Effect Settings
+        val glassEffectSettings = GlassEffectSettings(
+            enabled = prefs.getBoolean(KEY_GLASS_ENABLED, false),
+            style = GlassStyle.valueOf(prefs.getString(KEY_GLASS_STYLE, GlassStyle.NONE.name) ?: GlassStyle.NONE.name),
+            blur = prefs.getFloat(KEY_GLASS_BLUR, 10f),
+            opacity = prefs.getFloat(KEY_GLASS_OPACITY, 0.3f),
+            tint = prefs.getInt(KEY_GLASS_TINT, 0x80FFFFFF.toInt())
+        )
+
+        // Tree Effect Settings
+        val treeEffectSettings = TreeEffectSettings(
+            enabled = prefs.getBoolean(KEY_TREE_ENABLED, false),
+            style = TreeStyle.valueOf(prefs.getString(KEY_TREE_STYLE, TreeStyle.SIMPLE.name) ?: TreeStyle.SIMPLE.name),
+            trunkColor = prefs.getInt(KEY_TREE_TRUNK_COLOR, 0xFF8B4513.toInt()),
+            leafColor = prefs.getInt(KEY_TREE_LEAF_COLOR, 0xFF228B22.toInt()),
+            bloomColor = prefs.getInt(KEY_TREE_BLOOM_COLOR, 0xFFFF69B4.toInt()),
+            showGround = prefs.getBoolean(KEY_TREE_SHOW_GROUND, true)
+        )
+
+        // Fluid Effect Settings
+        val fluidEffectSettings = FluidEffectSettings(
+            enabled = prefs.getBoolean(KEY_FLUID_ENABLED, false),
+            style = FluidStyle.valueOf(prefs.getString(KEY_FLUID_STYLE, FluidStyle.NONE.name) ?: FluidStyle.NONE.name),
+            flowSpeed = prefs.getFloat(KEY_FLUID_FLOW_SPEED, 1.0f),
+            turbulence = prefs.getFloat(KEY_FLUID_TURBULENCE, 0.5f),
+            colorIntensity = prefs.getFloat(KEY_FLUID_COLOR_INTENSITY, 0.7f)
+        )
+
+        val visualTheme = VisualTheme.valueOf(prefs.getString(KEY_VISUAL_THEME, VisualTheme.CLASSIC.name) ?: VisualTheme.CLASSIC.name)
+
         return WallpaperSettings(
             theme = ThemeOption.valueOf(prefs.getString(KEY_THEME, ThemeOption.DARK.name) ?: ThemeOption.DARK.name),
             dotSize = DotSize.valueOf(prefs.getString(KEY_DOT_SIZE, DotSize.MEDIUM.name) ?: DotSize.MEDIUM.name),
@@ -197,7 +341,13 @@ class LifeDotsPreferences(context: Context) {
             viewModeSettings = viewModeSettings,
             calendarViewSettings = calendarViewSettings,
             backgroundSettings = backgroundSettings,
-            goalSettings = goalSettings
+            goalSettings = goalSettings,
+            positionSettings = positionSettings,
+            animationSettings = animationSettings,
+            glassEffectSettings = glassEffectSettings,
+            treeEffectSettings = treeEffectSettings,
+            fluidEffectSettings = fluidEffectSettings,
+            visualTheme = visualTheme
         )
     }
 
@@ -431,6 +581,179 @@ class LifeDotsPreferences(context: Context) {
         notifyWallpaperChanged()
     }
 
+    // ===== Position Settings setters =====
+    fun setHorizontalOffset(offset: Float) {
+        prefs.edit().putFloat(KEY_HORIZONTAL_OFFSET, offset).apply()
+        val newPosition = _settingsFlow.value.positionSettings.copy(horizontalOffset = offset)
+        _settingsFlow.value = _settingsFlow.value.copy(positionSettings = newPosition)
+        notifyWallpaperChanged()
+    }
+
+    fun setVerticalOffset(offset: Float) {
+        prefs.edit().putFloat(KEY_VERTICAL_OFFSET, offset).apply()
+        val newPosition = _settingsFlow.value.positionSettings.copy(verticalOffset = offset)
+        _settingsFlow.value = _settingsFlow.value.copy(positionSettings = newPosition)
+        notifyWallpaperChanged()
+    }
+
+    fun setScale(scale: Float) {
+        prefs.edit().putFloat(KEY_SCALE, scale).apply()
+        val newPosition = _settingsFlow.value.positionSettings.copy(scale = scale)
+        _settingsFlow.value = _settingsFlow.value.copy(positionSettings = newPosition)
+        notifyWallpaperChanged()
+    }
+
+    // ===== Animation Settings setters =====
+    fun setAnimationEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_ANIMATION_ENABLED, enabled).apply()
+        val newAnimation = _settingsFlow.value.animationSettings.copy(enabled = enabled)
+        _settingsFlow.value = _settingsFlow.value.copy(animationSettings = newAnimation)
+        notifyWallpaperChanged()
+    }
+
+    fun setAnimationType(type: AnimationType) {
+        prefs.edit().putString(KEY_ANIMATION_TYPE, type.name).apply()
+        val newAnimation = _settingsFlow.value.animationSettings.copy(type = type)
+        _settingsFlow.value = _settingsFlow.value.copy(animationSettings = newAnimation)
+        notifyWallpaperChanged()
+    }
+
+    fun setAnimationSpeed(speed: Float) {
+        prefs.edit().putFloat(KEY_ANIMATION_SPEED, speed).apply()
+        val newAnimation = _settingsFlow.value.animationSettings.copy(speed = speed)
+        _settingsFlow.value = _settingsFlow.value.copy(animationSettings = newAnimation)
+        notifyWallpaperChanged()
+    }
+
+    fun setAnimationIntensity(intensity: Float) {
+        prefs.edit().putFloat(KEY_ANIMATION_INTENSITY, intensity).apply()
+        val newAnimation = _settingsFlow.value.animationSettings.copy(intensity = intensity)
+        _settingsFlow.value = _settingsFlow.value.copy(animationSettings = newAnimation)
+        notifyWallpaperChanged()
+    }
+
+    // ===== Glass Effect Settings setters =====
+    fun setGlassEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GLASS_ENABLED, enabled).apply()
+        val newGlass = _settingsFlow.value.glassEffectSettings.copy(enabled = enabled)
+        _settingsFlow.value = _settingsFlow.value.copy(glassEffectSettings = newGlass)
+        notifyWallpaperChanged()
+    }
+
+    fun setGlassStyle(style: GlassStyle) {
+        prefs.edit().putString(KEY_GLASS_STYLE, style.name).apply()
+        val newGlass = _settingsFlow.value.glassEffectSettings.copy(style = style)
+        _settingsFlow.value = _settingsFlow.value.copy(glassEffectSettings = newGlass)
+        notifyWallpaperChanged()
+    }
+
+    fun setGlassBlur(blur: Float) {
+        prefs.edit().putFloat(KEY_GLASS_BLUR, blur).apply()
+        val newGlass = _settingsFlow.value.glassEffectSettings.copy(blur = blur)
+        _settingsFlow.value = _settingsFlow.value.copy(glassEffectSettings = newGlass)
+        notifyWallpaperChanged()
+    }
+
+    fun setGlassOpacity(opacity: Float) {
+        prefs.edit().putFloat(KEY_GLASS_OPACITY, opacity).apply()
+        val newGlass = _settingsFlow.value.glassEffectSettings.copy(opacity = opacity)
+        _settingsFlow.value = _settingsFlow.value.copy(glassEffectSettings = newGlass)
+        notifyWallpaperChanged()
+    }
+
+    fun setGlassTint(tint: Int) {
+        prefs.edit().putInt(KEY_GLASS_TINT, tint).apply()
+        val newGlass = _settingsFlow.value.glassEffectSettings.copy(tint = tint)
+        _settingsFlow.value = _settingsFlow.value.copy(glassEffectSettings = newGlass)
+        notifyWallpaperChanged()
+    }
+
+    // ===== Tree Effect Settings setters =====
+    fun setTreeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_TREE_ENABLED, enabled).apply()
+        val newTree = _settingsFlow.value.treeEffectSettings.copy(enabled = enabled)
+        _settingsFlow.value = _settingsFlow.value.copy(treeEffectSettings = newTree)
+        notifyWallpaperChanged()
+    }
+
+    fun setTreeStyle(style: TreeStyle) {
+        prefs.edit().putString(KEY_TREE_STYLE, style.name).apply()
+        val newTree = _settingsFlow.value.treeEffectSettings.copy(style = style)
+        _settingsFlow.value = _settingsFlow.value.copy(treeEffectSettings = newTree)
+        notifyWallpaperChanged()
+    }
+
+    fun setTreeTrunkColor(color: Int) {
+        prefs.edit().putInt(KEY_TREE_TRUNK_COLOR, color).apply()
+        val newTree = _settingsFlow.value.treeEffectSettings.copy(trunkColor = color)
+        _settingsFlow.value = _settingsFlow.value.copy(treeEffectSettings = newTree)
+        notifyWallpaperChanged()
+    }
+
+    fun setTreeLeafColor(color: Int) {
+        prefs.edit().putInt(KEY_TREE_LEAF_COLOR, color).apply()
+        val newTree = _settingsFlow.value.treeEffectSettings.copy(leafColor = color)
+        _settingsFlow.value = _settingsFlow.value.copy(treeEffectSettings = newTree)
+        notifyWallpaperChanged()
+    }
+
+    fun setTreeBloomColor(color: Int) {
+        prefs.edit().putInt(KEY_TREE_BLOOM_COLOR, color).apply()
+        val newTree = _settingsFlow.value.treeEffectSettings.copy(bloomColor = color)
+        _settingsFlow.value = _settingsFlow.value.copy(treeEffectSettings = newTree)
+        notifyWallpaperChanged()
+    }
+
+    fun setTreeShowGround(show: Boolean) {
+        prefs.edit().putBoolean(KEY_TREE_SHOW_GROUND, show).apply()
+        val newTree = _settingsFlow.value.treeEffectSettings.copy(showGround = show)
+        _settingsFlow.value = _settingsFlow.value.copy(treeEffectSettings = newTree)
+        notifyWallpaperChanged()
+    }
+
+    // ===== Fluid Effect Settings setters =====
+    fun setFluidEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FLUID_ENABLED, enabled).apply()
+        val newFluid = _settingsFlow.value.fluidEffectSettings.copy(enabled = enabled)
+        _settingsFlow.value = _settingsFlow.value.copy(fluidEffectSettings = newFluid)
+        notifyWallpaperChanged()
+    }
+
+    fun setFluidStyle(style: FluidStyle) {
+        prefs.edit().putString(KEY_FLUID_STYLE, style.name).apply()
+        val newFluid = _settingsFlow.value.fluidEffectSettings.copy(style = style)
+        _settingsFlow.value = _settingsFlow.value.copy(fluidEffectSettings = newFluid)
+        notifyWallpaperChanged()
+    }
+
+    fun setFluidFlowSpeed(speed: Float) {
+        prefs.edit().putFloat(KEY_FLUID_FLOW_SPEED, speed).apply()
+        val newFluid = _settingsFlow.value.fluidEffectSettings.copy(flowSpeed = speed)
+        _settingsFlow.value = _settingsFlow.value.copy(fluidEffectSettings = newFluid)
+        notifyWallpaperChanged()
+    }
+
+    fun setFluidTurbulence(turbulence: Float) {
+        prefs.edit().putFloat(KEY_FLUID_TURBULENCE, turbulence).apply()
+        val newFluid = _settingsFlow.value.fluidEffectSettings.copy(turbulence = turbulence)
+        _settingsFlow.value = _settingsFlow.value.copy(fluidEffectSettings = newFluid)
+        notifyWallpaperChanged()
+    }
+
+    fun setFluidColorIntensity(intensity: Float) {
+        prefs.edit().putFloat(KEY_FLUID_COLOR_INTENSITY, intensity).apply()
+        val newFluid = _settingsFlow.value.fluidEffectSettings.copy(colorIntensity = intensity)
+        _settingsFlow.value = _settingsFlow.value.copy(fluidEffectSettings = newFluid)
+        notifyWallpaperChanged()
+    }
+
+    // ===== Visual Theme setter =====
+    fun setVisualTheme(theme: VisualTheme) {
+        prefs.edit().putString(KEY_VISUAL_THEME, theme.name).apply()
+        _settingsFlow.value = _settingsFlow.value.copy(visualTheme = theme)
+        notifyWallpaperChanged()
+    }
+
     private fun notifyWallpaperChanged() {
         wallpaperChangeListeners.forEach { it.invoke() }
     }
@@ -477,6 +800,42 @@ class LifeDotsPreferences(context: Context) {
         private const val KEY_GOALS_ENABLED = "goals_enabled"
         private const val KEY_GOALS_JSON = "goals_json"
         private const val KEY_GOALS_POSITION = "goals_position"
+
+        // Position Settings keys
+        private const val KEY_HORIZONTAL_OFFSET = "horizontal_offset"
+        private const val KEY_VERTICAL_OFFSET = "vertical_offset"
+        private const val KEY_SCALE = "scale"
+
+        // Animation Settings keys
+        private const val KEY_ANIMATION_ENABLED = "animation_enabled"
+        private const val KEY_ANIMATION_TYPE = "animation_type"
+        private const val KEY_ANIMATION_SPEED = "animation_speed"
+        private const val KEY_ANIMATION_INTENSITY = "animation_intensity"
+
+        // Glass Effect Settings keys
+        private const val KEY_GLASS_ENABLED = "glass_enabled"
+        private const val KEY_GLASS_STYLE = "glass_style"
+        private const val KEY_GLASS_BLUR = "glass_blur"
+        private const val KEY_GLASS_OPACITY = "glass_opacity"
+        private const val KEY_GLASS_TINT = "glass_tint"
+
+        // Tree Effect Settings keys
+        private const val KEY_TREE_ENABLED = "tree_enabled"
+        private const val KEY_TREE_STYLE = "tree_style"
+        private const val KEY_TREE_TRUNK_COLOR = "tree_trunk_color"
+        private const val KEY_TREE_LEAF_COLOR = "tree_leaf_color"
+        private const val KEY_TREE_BLOOM_COLOR = "tree_bloom_color"
+        private const val KEY_TREE_SHOW_GROUND = "tree_show_ground"
+
+        // Fluid Effect Settings keys
+        private const val KEY_FLUID_ENABLED = "fluid_enabled"
+        private const val KEY_FLUID_STYLE = "fluid_style"
+        private const val KEY_FLUID_FLOW_SPEED = "fluid_flow_speed"
+        private const val KEY_FLUID_TURBULENCE = "fluid_turbulence"
+        private const val KEY_FLUID_COLOR_INTENSITY = "fluid_color_intensity"
+
+        // Visual Theme key
+        private const val KEY_VISUAL_THEME = "visual_theme"
 
         private val wallpaperChangeListeners = mutableListOf<() -> Unit>()
 
