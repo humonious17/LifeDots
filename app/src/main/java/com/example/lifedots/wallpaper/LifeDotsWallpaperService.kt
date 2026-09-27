@@ -41,11 +41,14 @@ import com.example.lifedots.preferences.GoalPosition
 import com.example.lifedots.preferences.GoalSettings
 import com.example.lifedots.preferences.GridDensity
 import com.example.lifedots.preferences.LifeDotsPreferences
+import com.example.lifedots.preferences.LifeProgress
+import com.example.lifedots.preferences.LifeSettings
 import com.example.lifedots.preferences.PositionSettings
 import com.example.lifedots.preferences.ProgressPosition
 import com.example.lifedots.preferences.ProgressSettings
 import com.example.lifedots.preferences.TextAlignment
 import com.example.lifedots.preferences.ThemeOption
+import com.example.lifedots.preferences.TimeScale
 import com.example.lifedots.preferences.TreeEffectSettings
 import com.example.lifedots.preferences.TreeStyle
 import com.example.lifedots.preferences.ViewMode

@@ -7,9 +7,92 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToInt
+
+// Time Scale: Year vs Life
+enum class TimeScale {
+    YEAR,  // 365/366 days of current year (default)
+    LIFE   // Life in Weeks (Memento Mori)
+}
+
+data class LifeProgress(
+    val ageYears: Int,
+    val weekInCurrentYear: Int,
+    val currentDotIndex: Int,
+    val totalWeeks: Int,
+    val weeksLived: Int,
+    val weeksRemaining: Int,
+    val percentLived: Float
+)
+
+data class LifeSettings(
+    val birthDate: Long = defaultBirthDate(),
+    val lifeExpectancyYears: Int = 80,
+    val showTitle: Boolean = true,
+    val titleText: String = "MEMENTO MORI",
+    val showYearLabels: Boolean = true,
+    val splitHalves: Boolean = true,
+    val showQuote: Boolean = true,
+    val quoteText: String = DEFAULT_SENECA_QUOTE,
+    val quoteAuthor: String = "SENECA"
+) {
+    companion object {
+        const val DEFAULT_SENECA_QUOTE = "It is not that we have a short time to live, but that we waste much of it. Life is long enough, and it has been given in sufficiently generous measure to allow the accomplishment of the very greatest things if the whole of it is well invested."
+
+        fun defaultBirthDate(): Long {
+            return Calendar.getInstance().apply {
+                set(2000, Calendar.JANUARY, 1, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        }
+    }
+
+    fun calculateProgress(): LifeProgress {
+        val birthCal = Calendar.getInstance().apply { timeInMillis = birthDate }
+        val nowCal = Calendar.getInstance()
+
+        var ageYears = nowCal.get(Calendar.YEAR) - birthCal.get(Calendar.YEAR)
+        val hasHadBirthdayThisYear = (nowCal.get(Calendar.MONTH) > birthCal.get(Calendar.MONTH)) ||
+            (nowCal.get(Calendar.MONTH) == birthCal.get(Calendar.MONTH) && nowCal.get(Calendar.DAY_OF_MONTH) >= birthCal.get(Calendar.DAY_OF_MONTH))
+
+        if (!hasHadBirthdayThisYear) {
+            ageYears--
+        }
+        ageYears = ageYears.coerceAtLeast(0)
+
+        val lastBirthdayCal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, birthCal.get(Calendar.YEAR) + ageYears)
+            set(Calendar.MONTH, birthCal.get(Calendar.MONTH))
+            set(Calendar.DAY_OF_MONTH, birthCal.get(Calendar.DAY_OF_MONTH))
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val daysSinceLastBirthday = ((nowCal.timeInMillis - lastBirthdayCal.timeInMillis) / (1000L * 60 * 60 * 24)).toInt().coerceAtLeast(0)
+        val weekInCurrentYear = (daysSinceLastBirthday / 7).coerceIn(0, 51)
+
+        val totalWeeks = lifeExpectancyYears * 52
+        val currentDotIndex = (ageYears * 52 + weekInCurrentYear).coerceIn(0, totalWeeks)
+        val weeksLived = currentDotIndex
+        val weeksRemaining = (totalWeeks - currentDotIndex - 1).coerceAtLeast(0)
+        val percentLived = if (totalWeeks > 0) (currentDotIndex.toFloat() / totalWeeks.toFloat()) * 100f else 0f
+
+        return LifeProgress(
+            ageYears = ageYears,
+            weekInCurrentYear = weekInCurrentYear,
+            currentDotIndex = currentDotIndex,
+            totalWeeks = totalWeeks,
+            weeksLived = weeksLived,
+            weeksRemaining = weeksRemaining,
+            percentLived = percentLived
+        )
+    }
+}
 
 // Feature: Year Progress & Remaining Days
 enum class ProgressPosition {
@@ -27,7 +110,48 @@ data class ProgressSettings(
     val alignment: TextAlignment = TextAlignment.CENTER,
     val position: ProgressPosition = ProgressPosition.BOTTOM
 ) {
-    fun formatText(dayOfYear: Int, totalDays: Int): String {
+    fun formatText(dayOfYear: Int, totalDays: Int, lifeProgress: LifeProgress? = null): String {
+        if (lifeProgress != null) {
+            val percentage = lifeProgress.percentLived
+            val formattedPercent = if (decimalPlaces <= 0) {
+                "${percentage.roundToInt()}%"
+            } else {
+                String.format(Locale.US, "%.${decimalPlaces}f%%", percentage)
+            }
+
+            val parts = mutableListOf<String>()
+
+            if (showDaysPassed && !showPercentage && !showRemainingDays) {
+                parts.add("Week ${lifeProgress.weeksLived + 1} of ${lifeProgress.totalWeeks}")
+            } else if (showDaysPassed) {
+                parts.add("Wk ${lifeProgress.weeksLived + 1}/${lifeProgress.totalWeeks}")
+            }
+
+            if (showPercentage) {
+                if (!showRemainingDays && !showDaysPassed) {
+                    parts.add("$formattedPercent lived")
+                } else {
+                    parts.add(formattedPercent)
+                }
+            }
+
+            if (showRemainingDays) {
+                if (!showPercentage && !showDaysPassed) {
+                    val weeksText = if (lifeProgress.weeksRemaining == 1) "1 week remaining" else "${lifeProgress.weeksRemaining} weeks remaining"
+                    parts.add(weeksText)
+                } else {
+                    val weeksText = if (lifeProgress.weeksRemaining == 1) "1 week left" else "${lifeProgress.weeksRemaining} weeks left"
+                    parts.add(weeksText)
+                }
+            }
+
+            if (parts.isEmpty()) {
+                return "$formattedPercent • ${if (lifeProgress.weeksRemaining == 1) "1 week left" else "${lifeProgress.weeksRemaining} weeks left"}"
+            }
+
+            return parts.joinToString(" • ")
+        }
+
         val remainingDays = (totalDays - dayOfYear).coerceAtLeast(0)
         val percentage = (dayOfYear.toFloat() / totalDays.toFloat()) * 100f
         val formattedPercent = if (decimalPlaces <= 0) {
@@ -251,6 +375,8 @@ enum class VisualTheme {
 }
 
 data class WallpaperSettings(
+    val timeScale: TimeScale = TimeScale.YEAR,
+    val lifeSettings: LifeSettings = LifeSettings(),
     val theme: ThemeOption = ThemeOption.DARK,
     val dotSize: DotSize = DotSize.MEDIUM,
     val dotShape: DotShape = DotShape.CIRCLE,
@@ -402,7 +528,25 @@ class LifeDotsPreferences(context: Context) {
 
         val visualTheme = VisualTheme.valueOf(prefs.getString(KEY_VISUAL_THEME, VisualTheme.CLASSIC.name) ?: VisualTheme.CLASSIC.name)
 
+        val timeScale = TimeScale.valueOf(
+            prefs.getString(KEY_TIME_SCALE, TimeScale.YEAR.name) ?: TimeScale.YEAR.name
+        )
+
+        val lifeSettings = LifeSettings(
+            birthDate = prefs.getLong(KEY_LIFE_BIRTH_DATE, LifeSettings.defaultBirthDate()),
+            lifeExpectancyYears = prefs.getInt(KEY_LIFE_EXPECTANCY, 80),
+            showTitle = prefs.getBoolean(KEY_LIFE_SHOW_TITLE, true),
+            titleText = prefs.getString(KEY_LIFE_TITLE_TEXT, "MEMENTO MORI") ?: "MEMENTO MORI",
+            showYearLabels = prefs.getBoolean(KEY_LIFE_SHOW_YEAR_LABELS, true),
+            splitHalves = prefs.getBoolean(KEY_LIFE_SPLIT_HALVES, true),
+            showQuote = prefs.getBoolean(KEY_LIFE_SHOW_QUOTE, true),
+            quoteText = prefs.getString(KEY_LIFE_QUOTE_TEXT, LifeSettings.DEFAULT_SENECA_QUOTE) ?: LifeSettings.DEFAULT_SENECA_QUOTE,
+            quoteAuthor = prefs.getString(KEY_LIFE_QUOTE_AUTHOR, "SENECA") ?: "SENECA"
+        )
+
         return WallpaperSettings(
+            timeScale = timeScale,
+            lifeSettings = lifeSettings,
             theme = ThemeOption.valueOf(prefs.getString(KEY_THEME, ThemeOption.DARK.name) ?: ThemeOption.DARK.name),
             dotSize = DotSize.valueOf(prefs.getString(KEY_DOT_SIZE, DotSize.MEDIUM.name) ?: DotSize.MEDIUM.name),
             dotShape = DotShape.valueOf(prefs.getString(KEY_DOT_SHAPE, DotShape.CIRCLE.name) ?: DotShape.CIRCLE.name),
@@ -425,6 +569,75 @@ class LifeDotsPreferences(context: Context) {
             fluidEffectSettings = fluidEffectSettings,
             visualTheme = visualTheme
         )
+    }
+
+    fun setTimeScale(timeScale: TimeScale) {
+        prefs.edit().putString(KEY_TIME_SCALE, timeScale.name).apply()
+        _settingsFlow.value = _settingsFlow.value.copy(timeScale = timeScale)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeBirthDate(birthDate: Long) {
+        prefs.edit().putLong(KEY_LIFE_BIRTH_DATE, birthDate).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(birthDate = birthDate)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeExpectancy(years: Int) {
+        prefs.edit().putInt(KEY_LIFE_EXPECTANCY, years).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(lifeExpectancyYears = years)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeShowTitle(show: Boolean) {
+        prefs.edit().putBoolean(KEY_LIFE_SHOW_TITLE, show).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(showTitle = show)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeTitleText(text: String) {
+        prefs.edit().putString(KEY_LIFE_TITLE_TEXT, text).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(titleText = text)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeShowYearLabels(show: Boolean) {
+        prefs.edit().putBoolean(KEY_LIFE_SHOW_YEAR_LABELS, show).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(showYearLabels = show)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeSplitHalves(split: Boolean) {
+        prefs.edit().putBoolean(KEY_LIFE_SPLIT_HALVES, split).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(splitHalves = split)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeShowQuote(show: Boolean) {
+        prefs.edit().putBoolean(KEY_LIFE_SHOW_QUOTE, show).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(showQuote = show)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeQuoteText(text: String) {
+        prefs.edit().putString(KEY_LIFE_QUOTE_TEXT, text).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(quoteText = text)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
+    }
+
+    fun setLifeQuoteAuthor(author: String) {
+        prefs.edit().putString(KEY_LIFE_QUOTE_AUTHOR, author).apply()
+        val newLife = _settingsFlow.value.lifeSettings.copy(quoteAuthor = author)
+        _settingsFlow.value = _settingsFlow.value.copy(lifeSettings = newLife)
+        notifyWallpaperChanged()
     }
 
     fun setTheme(theme: ThemeOption) {
@@ -900,6 +1113,17 @@ class LifeDotsPreferences(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "lifedots_prefs"
+        private const val KEY_TIME_SCALE = "time_scale"
+        private const val KEY_LIFE_BIRTH_DATE = "life_birth_date"
+        private const val KEY_LIFE_EXPECTANCY = "life_expectancy"
+        private const val KEY_LIFE_SHOW_TITLE = "life_show_title"
+        private const val KEY_LIFE_TITLE_TEXT = "life_title_text"
+        private const val KEY_LIFE_SHOW_YEAR_LABELS = "life_show_year_labels"
+        private const val KEY_LIFE_SPLIT_HALVES = "life_split_halves"
+        private const val KEY_LIFE_SHOW_QUOTE = "life_show_quote"
+        private const val KEY_LIFE_QUOTE_TEXT = "life_quote_text"
+        private const val KEY_LIFE_QUOTE_AUTHOR = "life_quote_author"
+
         private const val KEY_THEME = "theme"
         private const val KEY_DOT_SIZE = "dot_size"
         private const val KEY_DOT_SHAPE = "dot_shape"
