@@ -91,9 +91,14 @@ fun OnboardingScreen(
 ) {
     val settings by preferences.settingsFlow.collectAsState()
     val isLifeMode = settings.timeScale == TimeScale.LIFE
-
-    val dayOfYear = remember { Calendar.getInstance().get(Calendar.DAY_OF_YEAR) }
-    val totalDays = remember { Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_YEAR) }
+    val customYearProgress = remember(settings.customYearSettings) {
+        if (settings.customYearSettings.enabled) {
+            settings.customYearSettings.calculateProgress()
+        } else null
+    }
+    val calendar = remember { Calendar.getInstance() }
+    val dayOfYear = customYearProgress?.dayIndex ?: calendar.get(Calendar.DAY_OF_YEAR)
+    val totalDays = customYearProgress?.totalDays ?: calendar.getActualMaximum(Calendar.DAY_OF_YEAR)
     val lifeProgress = remember(settings.lifeSettings) { settings.lifeSettings.calculateProgress() }
 
     Column(
@@ -118,7 +123,7 @@ fun OnboardingScreen(
         } else {
             DotsPreview(
                 dayOfYear = dayOfYear,
-                totalDays = 365,
+                totalDays = totalDays,
                 modifier = Modifier.size(200.dp)
             )
         }
@@ -144,12 +149,15 @@ fun OnboardingScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        val descriptionText = when {
+            isLifeMode -> "Every dot represents one week of your life. Filled dots are weeks passed, the highlighted dot is this week, and empty dots are weeks remaining."
+            settings.customYearSettings.enabled -> "$totalDays dots. One fills each day. A quiet reminder that time is moving forward."
+            else -> stringResource(R.string.onboarding_description)
+        }
+
         // Description
         Text(
-            text = if (isLifeMode)
-                "Every dot represents one week of your life. Filled dots are weeks passed, the highlighted dot is this week, and empty dots are weeks remaining."
-            else
-                stringResource(R.string.onboarding_description),
+            text = descriptionText,
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,

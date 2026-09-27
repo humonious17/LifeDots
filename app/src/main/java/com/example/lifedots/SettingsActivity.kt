@@ -21,6 +21,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,6 +39,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -68,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.lifedots.preferences.AnimationType
+import com.example.lifedots.preferences.CustomYearSettings
 import com.example.lifedots.preferences.DotShape
 import com.example.lifedots.preferences.DotSize
 import com.example.lifedots.preferences.DotStyle
@@ -142,6 +145,8 @@ fun SettingsScreen(
     var showTreeLeafColorPicker by remember { mutableStateOf(false) }
     var showTreeBloomColorPicker by remember { mutableStateOf(false) }
     var showBirthDatePicker by remember { mutableStateOf(false) }
+    var showCustomYearStartDatePicker by remember { mutableStateOf(false) }
+    var showCustomYearEndDatePicker by remember { mutableStateOf(false) }
 
     // Permission state for image picker
     var hasImagePermission by remember {
@@ -262,6 +267,256 @@ fun SettingsScreen(
                             fontSize = 12.sp,
                             color = (if (settings.timeScale == TimeScale.LIFE) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.7f)
                         )
+                    }
+                }
+            }
+        }
+
+        // Custom Year / Academic Year Settings (visible when Year mode selected)
+        AnimatedVisibility(
+            visible = settings.timeScale == TimeScale.YEAR,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            val customYear = settings.customYearSettings
+            val dateFormat = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
+            val startDateString = remember(customYear.startDate) {
+                dateFormat.format(Date(customYear.startDate))
+            }
+            val endDateString = remember(customYear.endDate) {
+                dateFormat.format(Date(customYear.endDate))
+            }
+            val progress = remember(customYear) { customYear.calculateProgress() }
+
+            Column {
+                Spacer(modifier = Modifier.height(24.dp))
+                SettingsSection(title = stringResource(R.string.custom_year_section)) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 2.dp
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            // Toggle
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.custom_year_enable),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.custom_year_desc),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                                Switch(
+                                    checked = customYear.enabled,
+                                    onCheckedChange = { preferences.setCustomYearEnabled(it) }
+                                )
+                            }
+
+                            AnimatedVisibility(visible = customYear.enabled) {
+                                Column {
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    // Summary Card
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(14.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "Custom Year Progress",
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = "${String.format(Locale.getDefault(), "%.1f", progress.percentage)}%",
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(10.dp))
+
+                                            LinearProgressIndicator(
+                                                progress = (progress.percentage / 100.0).toFloat().coerceIn(0f, 1f),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(6.dp)
+                                                    .clip(RoundedCornerShape(3.dp)),
+                                                color = MaterialTheme.colorScheme.primary,
+                                                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                            )
+
+                                            Spacer(modifier = Modifier.height(10.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Column {
+                                                    Text(
+                                                        text = "Day Count",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                                    )
+                                                    Text(
+                                                        text = "Day ${progress.dayIndex} of ${progress.totalDays}",
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                                Column(horizontalAlignment = Alignment.End) {
+                                                    Text(
+                                                        text = "Days Remaining",
+                                                        fontSize = 11.sp,
+                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                                    )
+                                                    Text(
+                                                        text = "${progress.daysRemaining} left",
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    // Quick Presets
+                                    Text(
+                                        text = "Quick Presets",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                val (start, end) = CustomYearSettings.createAcademicYearRange()
+                                                preferences.setCustomYearRange(start, end)
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Sep – May",
+                                                fontSize = 11.sp,
+                                                maxLines = 1
+                                            )
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                val (start, end) = CustomYearSettings.createSchoolYearRange()
+                                                preferences.setCustomYearRange(start, end)
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Aug – Jun",
+                                                fontSize = 11.sp,
+                                                maxLines = 1
+                                            )
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                val (start, end) = CustomYearSettings.createCalendarYearRange()
+                                                preferences.setCustomYearRange(start, end)
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Jan – Dec",
+                                                fontSize = 11.sp,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    // Start Date
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stringResource(R.string.custom_year_start),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = startDateString,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                        OutlinedButton(
+                                            onClick = { showCustomYearStartDatePicker = true }
+                                        ) {
+                                            Text("Change")
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // End Date
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stringResource(R.string.custom_year_end),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = endDateString,
+                                                fontSize = 13.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                        OutlinedButton(
+                                            onClick = { showCustomYearEndDatePicker = true }
+                                        ) {
+                                            Text("Change")
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1203,9 +1458,15 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Live Preview Box
-                            val calendar = remember { Calendar.getInstance() }
-                            val dayOfYear = remember { calendar.get(Calendar.DAY_OF_YEAR) }
-                            val totalDays = remember { calendar.getActualMaximum(Calendar.DAY_OF_YEAR) }
+                            val (dayOfYear, totalDays) = remember(settings.customYearSettings) {
+                                if (settings.customYearSettings.enabled) {
+                                    val prog = settings.customYearSettings.calculateProgress()
+                                    Pair(prog.dayIndex, prog.totalDays)
+                                } else {
+                                    val calendar = Calendar.getInstance()
+                                    Pair(calendar.get(Calendar.DAY_OF_YEAR), calendar.getActualMaximum(Calendar.DAY_OF_YEAR))
+                                }
+                            }
                             val previewText = remember(settings.progressSettings, dayOfYear, totalDays) {
                                 settings.progressSettings.formatText(dayOfYear, totalDays)
                             }
@@ -2368,6 +2629,30 @@ fun SettingsScreen(
             onDismiss = { showBirthDatePicker = false }
         )
     }
+
+    // Custom year start date picker dialog
+    if (showCustomYearStartDatePicker) {
+        DatePickerDialog(
+            initialDate = settings.customYearSettings.startDate,
+            onDateSelected = {
+                preferences.setCustomYearStartDate(it)
+                showCustomYearStartDatePicker = false
+            },
+            onDismiss = { showCustomYearStartDatePicker = false }
+        )
+    }
+
+    // Custom year end date picker dialog
+    if (showCustomYearEndDatePicker) {
+        DatePickerDialog(
+            initialDate = settings.customYearSettings.endDate,
+            onDateSelected = {
+                preferences.setCustomYearEndDate(it)
+                showCustomYearEndDatePicker = false
+            },
+            onDismiss = { showCustomYearEndDatePicker = false }
+        )
+    }
 }
 
 @Composable
@@ -2925,8 +3210,7 @@ fun GoalItem(
 ) {
     val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val daysRemaining = remember(goal.targetDate) {
-        val now = System.currentTimeMillis()
-        ((goal.targetDate - now) / (1000 * 60 * 60 * 24)).toInt()
+        goal.calculateDaysRemaining()
     }
 
     Surface(
@@ -2963,8 +3247,10 @@ fun GoalItem(
                 )
                 Text(
                     text = when {
-                        daysRemaining > 0 -> "$daysRemaining days left"
+                        daysRemaining > 1 -> "$daysRemaining days left"
+                        daysRemaining == 1 -> "1 day left"
                         daysRemaining == 0 -> "Today!"
+                        daysRemaining == -1 -> "1 day ago"
                         else -> "${-daysRemaining} days ago"
                     },
                     fontSize = 12.sp,

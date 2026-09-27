@@ -1,5 +1,9 @@
 package com.example.lifedots.wallpaper
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BlurMaskFilter
@@ -17,6 +21,7 @@ import android.graphics.Shader
 import android.graphics.SweepGradient
 import android.graphics.Typeface
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.renderscript.Allocation
@@ -141,13 +146,23 @@ class LifeDotsWallpaperService : WallpaperService() {
         )
 
         private val settingsChangeListener: () -> Unit = {
+            lastDrawnDay = -1
             handler.post { draw() }
+        }
+
+        private val dateChangeReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                lastDrawnDay = -1
+                handler.post { draw() }
+                scheduleNextMidnightCheck()
+            }
         }
 
         private val midnightChecker = object : Runnable {
             override fun run() {
-                val currentDay = getCurrentDayOfYear()
+                val currentDay = getActiveDayOfYear(preferences.settings)
                 if (currentDay != lastDrawnDay) {
+                    lastDrawnDay = currentDay
                     draw()
                 }
                 scheduleNextMidnightCheck()
@@ -157,11 +172,28 @@ class LifeDotsWallpaperService : WallpaperService() {
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
             LifeDotsPreferences.addWallpaperChangeListener(settingsChangeListener)
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_DATE_CHANGED)
+                addAction(Intent.ACTION_TIMEZONE_CHANGED)
+                addAction(Intent.ACTION_TIME_SET)
+                addAction(Intent.ACTION_TIME_CHANGED)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(dateChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(dateChangeReceiver, filter)
+            }
         }
 
         override fun onDestroy() {
             super.onDestroy()
+            try {
+                unregisterReceiver(dateChangeReceiver)
+            } catch (e: Exception) {
+                // Receiver was not registered or already unregistered
+            }
             LifeDotsPreferences.removeWallpaperChangeListener(settingsChangeListener)
+            handler.removeCallbacks(midnightChecker)
             handler.removeCallbacks(animationRunner)
             handler.removeCallbacks(fluidRunner)
             handler.removeCallbacksAndMessages(null)
@@ -182,7 +214,6 @@ class LifeDotsWallpaperService : WallpaperService() {
                     handler.post(fluidRunner)
                 }
             } else {
-                handler.removeCallbacks(midnightChecker)
                 handler.removeCallbacks(animationRunner)
                 handler.removeCallbacks(fluidRunner)
             }
@@ -213,6 +244,22 @@ class LifeDotsWallpaperService : WallpaperService() {
             handler.postDelayed(midnightChecker, delay)
         }
 
+        private fun getActiveDayOfYear(settings: WallpaperSettings): Int {
+            return if (settings.customYearSettings.enabled) {
+                settings.customYearSettings.calculateProgress().dayIndex
+            } else {
+                Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+            }
+        }
+
+        private fun getActiveTotalDays(settings: WallpaperSettings): Int {
+            return if (settings.customYearSettings.enabled) {
+                settings.customYearSettings.calculateProgress().totalDays
+            } else {
+                Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_YEAR)
+            }
+        }
+
         private fun getCurrentDayOfYear(): Int {
             return Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
         }
@@ -231,7 +278,7 @@ class LifeDotsWallpaperService : WallpaperService() {
                 canvas = holder.lockCanvas()
                 if (canvas != null) {
                     drawDots(canvas)
-                    lastDrawnDay = getCurrentDayOfYear()
+                    lastDrawnDay = getActiveDayOfYear(preferences.settings)
                 }
             } finally {
                 if (canvas != null) {
@@ -266,8 +313,13 @@ class LifeDotsWallpaperService : WallpaperService() {
 
             setupPaints(colors, settings)
 
-            val dayOfYear = getCurrentDayOfYear()
-            val totalDays = getTotalDaysInYear()
+            val customRangeProgress = if (settings.customYearSettings.enabled) {
+                settings.customYearSettings.calculateProgress()
+            } else null
+
+            val dayOfYear = customRangeProgress?.dayIndex ?: getCurrentDayOfYear()
+            val totalDays = customRangeProgress?.totalDays ?: getTotalDaysInYear()
+            val isTodayInRange = customRangeProgress?.isTodayInRange ?: true
 
             // Calculate available height considering goals, progress, and footer
             val topOffset = calculateTopOffset(canvas.width, canvas.height, settings)
@@ -321,13 +373,13 @@ class LifeDotsWallpaperService : WallpaperService() {
                 // Draw based on view mode
                 when (settings.viewModeSettings.mode) {
                     ViewMode.CONTINUOUS -> {
-                        drawContinuousView(canvas, settings, colors, dayOfYear, totalDays, topOffset, bottomOffset)
+                        drawContinuousView(canvas, settings, colors, dayOfYear, totalDays, topOffset, bottomOffset, isTodayInRange)
                     }
                     ViewMode.MONTHLY -> {
-                        drawMonthlyView(canvas, settings, colors, dayOfYear, topOffset, bottomOffset)
+                        drawMonthlyView(canvas, settings, colors, dayOfYear, topOffset, bottomOffset, isTodayInRange)
                     }
                     ViewMode.CALENDAR -> {
-                        drawCalendarView(canvas, settings, colors, dayOfYear, topOffset, bottomOffset)
+                        drawCalendarView(canvas, settings, colors, dayOfYear, topOffset, bottomOffset, isTodayInRange)
                     }
                 }
             }
@@ -345,7 +397,7 @@ class LifeDotsWallpaperService : WallpaperService() {
 
             // Feature 2: Draw footer text if enabled
             if (settings.footerTextSettings.enabled && settings.footerTextSettings.text.isNotEmpty()) {
-                drawFooterText(canvas, settings.footerTextSettings, lifeProgress, bottomY)
+                drawFooterText(canvas, settings.footerTextSettings, dayOfYear, totalDays, lifeProgress, bottomY)
                 bottomY -= (settings.footerTextSettings.fontSize * 3 + 20f)
             }
 
@@ -423,7 +475,8 @@ class LifeDotsWallpaperService : WallpaperService() {
             dayOfYear: Int,
             totalDays: Int,
             topOffset: Float,
-            bottomOffset: Float
+            bottomOffset: Float,
+            isTodayInRange: Boolean = true
         ) {
             val availableHeight = canvas.height - topOffset - bottomOffset
             val gridConfig = calculateGridConfigWithOffset(
@@ -443,7 +496,7 @@ class LifeDotsWallpaperService : WallpaperService() {
                     val cy = gridConfig.startY + row * gridConfig.cellSize + gridConfig.cellSize / 2
 
                     val dotType = when {
-                        dotIndex + 1 == dayOfYear && settings.highlightToday -> DotType.TODAY
+                        dotIndex + 1 == dayOfYear && settings.highlightToday && isTodayInRange -> DotType.TODAY
                         dotIndex + 1 <= dayOfYear -> DotType.FILLED
                         else -> DotType.EMPTY
                     }
@@ -461,19 +514,37 @@ class LifeDotsWallpaperService : WallpaperService() {
             colors: ThemeColors,
             dayOfYear: Int,
             topOffset: Float,
-            bottomOffset: Float
+            bottomOffset: Float,
+            isTodayInRange: Boolean = true
         ) {
-            // Reset animation counters
-            currentDotIndex = 0
-            totalDotsInView = getTotalDaysInYear()
-
+            val monthsList = mutableListOf<Pair<Int, Int>>() // Pair(year, month 0..11)
             val calendar = Calendar.getInstance()
             val currentYear = calendar.get(Calendar.YEAR)
-            val currentMonth = calendar.get(Calendar.MONTH)
-            val currentDayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+
+            if (settings.customYearSettings.enabled) {
+                val scanCal = Calendar.getInstance().apply {
+                    timeInMillis = settings.customYearSettings.startDate
+                    set(Calendar.DAY_OF_MONTH, 1)
+                }
+                val endCal = Calendar.getInstance().apply {
+                    timeInMillis = settings.customYearSettings.endDate
+                    set(Calendar.DAY_OF_MONTH, 1)
+                }
+                while (!scanCal.after(endCal) && monthsList.size < 24) {
+                    monthsList.add(Pair(scanCal.get(Calendar.YEAR), scanCal.get(Calendar.MONTH)))
+                    scanCal.add(Calendar.MONTH, 1)
+                }
+            }
+            if (monthsList.isEmpty()) {
+                for (m in 0..11) monthsList.add(Pair(currentYear, m))
+            }
+
+            // Reset animation counters
+            currentDotIndex = 0
+            totalDotsInView = getActiveTotalDays(settings)
 
             val availableHeight = canvas.height - topOffset - bottomOffset
-            val monthSectionHeight = availableHeight / 12f
+            val monthSectionHeight = availableHeight / monthsList.size.toFloat()
 
             val cols = when (settings.gridDensity) {
                 GridDensity.COMPACT -> 21
@@ -493,12 +564,13 @@ class LifeDotsWallpaperService : WallpaperService() {
 
             var cumulativeDayOfYear = 0
 
-            for (month in 0..11) {
+            for (monthIdx in monthsList.indices) {
+                val (year, month) = monthsList[monthIdx]
                 val tempCal = Calendar.getInstance()
-                tempCal.set(currentYear, month, 1)
+                tempCal.set(year, month, 1)
                 val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-                val monthTop = topOffset + month * monthSectionHeight
+                val monthTop = topOffset + monthIdx * monthSectionHeight
                 val labelHeight = if (settings.viewModeSettings.showMonthLabels) 25f else 0f
                 val dotsTop = monthTop + labelHeight
 
@@ -540,7 +612,7 @@ class LifeDotsWallpaperService : WallpaperService() {
 
                         val absoluteDay = cumulativeDayOfYear + dayIndex + 1
                         val dotType = when {
-                            absoluteDay == dayOfYear && settings.highlightToday -> DotType.TODAY
+                            absoluteDay == dayOfYear && settings.highlightToday && isTodayInRange -> DotType.TODAY
                             absoluteDay <= dayOfYear -> DotType.FILLED
                             else -> DotType.EMPTY
                         }
@@ -559,17 +631,37 @@ class LifeDotsWallpaperService : WallpaperService() {
             colors: ThemeColors,
             dayOfYear: Int,
             topOffset: Float,
-            bottomOffset: Float
+            bottomOffset: Float,
+            isTodayInRange: Boolean = true
         ) {
-            // Reset animation counters
-            currentDotIndex = 0
-            totalDotsInView = getTotalDaysInYear()
-
+            val monthsList = mutableListOf<Pair<Int, Int>>() // Pair(year, month 0..11)
             val calendar = Calendar.getInstance()
             val currentYear = calendar.get(Calendar.YEAR)
 
+            if (settings.customYearSettings.enabled) {
+                val scanCal = Calendar.getInstance().apply {
+                    timeInMillis = settings.customYearSettings.startDate
+                    set(Calendar.DAY_OF_MONTH, 1)
+                }
+                val endCal = Calendar.getInstance().apply {
+                    timeInMillis = settings.customYearSettings.endDate
+                    set(Calendar.DAY_OF_MONTH, 1)
+                }
+                while (!scanCal.after(endCal) && monthsList.size < 24) {
+                    monthsList.add(Pair(scanCal.get(Calendar.YEAR), scanCal.get(Calendar.MONTH)))
+                    scanCal.add(Calendar.MONTH, 1)
+                }
+            }
+            if (monthsList.isEmpty()) {
+                for (m in 0..11) monthsList.add(Pair(currentYear, m))
+            }
+
+            // Reset animation counters
+            currentDotIndex = 0
+            totalDotsInView = getActiveTotalDays(settings)
+
             val columnsPerRow = settings.calendarViewSettings.columnsPerRow
-            val rowsOfMonths = (12 + columnsPerRow - 1) / columnsPerRow
+            val rowsOfMonths = (monthsList.size + columnsPerRow - 1) / columnsPerRow
 
             val availableWidth = canvas.width.toFloat()
             val availableHeight = canvas.height - topOffset - bottomOffset
@@ -580,16 +672,11 @@ class LifeDotsWallpaperService : WallpaperService() {
             val padding = 8f
 
             var cumulativeDayOfYear = 0
-            val daysPerMonth = IntArray(12)
-            for (m in 0..11) {
-                val tempCal = Calendar.getInstance()
-                tempCal.set(currentYear, m, 1)
-                daysPerMonth[m] = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
-            }
 
-            for (month in 0..11) {
-                val gridRow = month / columnsPerRow
-                val gridCol = month % columnsPerRow
+            for (monthIdx in monthsList.indices) {
+                val (year, month) = monthsList[monthIdx]
+                val gridRow = monthIdx / columnsPerRow
+                val gridCol = monthIdx % columnsPerRow
 
                 val cellLeft = gridCol * cellWidth + padding
                 val cellTop = topOffset + gridRow * cellHeight + padding
@@ -605,7 +692,9 @@ class LifeDotsWallpaperService : WallpaperService() {
                     canvas.drawText(shortMonthNames[month], cellLeft + 4f, cellTop + 14f, monthLabelPaint)
                 }
 
-                val daysInMonth = daysPerMonth[month]
+                val tempCal = Calendar.getInstance()
+                tempCal.set(year, month, 1)
+                val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
                 val dotsAreaTop = cellTop + labelHeight
                 val dotsAreaHeight = cellInnerHeight - labelHeight
 
@@ -636,7 +725,7 @@ class LifeDotsWallpaperService : WallpaperService() {
 
                         val absoluteDay = cumulativeDayOfYear + dayIndex + 1
                         val dotType = when {
-                            absoluteDay == dayOfYear && settings.highlightToday -> DotType.TODAY
+                            absoluteDay == dayOfYear && settings.highlightToday && isTodayInRange -> DotType.TODAY
                             absoluteDay <= dayOfYear -> DotType.FILLED
                             else -> DotType.EMPTY
                         }
@@ -906,15 +995,21 @@ class LifeDotsWallpaperService : WallpaperService() {
         private fun drawFooterText(
             canvas: Canvas,
             footerSettings: FooterTextSettings,
+            dayOfYear: Int,
+            totalDays: Int,
             lifeProgress: LifeProgress?,
             y: Float
         ) {
             if (footerSettings.text.isEmpty()) return
 
-            val dayOfYear = getCurrentDayOfYear()
-            val totalDays = getTotalDaysInYear()
             val remainingDays = (totalDays - dayOfYear).coerceAtLeast(0)
-            val year = Calendar.getInstance().get(Calendar.YEAR).toString()
+            val year = if (preferences.settings.customYearSettings.enabled) {
+                val startYr = Calendar.getInstance().apply { timeInMillis = preferences.settings.customYearSettings.startDate }.get(Calendar.YEAR)
+                val endYr = Calendar.getInstance().apply { timeInMillis = preferences.settings.customYearSettings.endDate }.get(Calendar.YEAR)
+                if (startYr == endYr) "$startYr" else "$startYr-$endYr"
+            } else {
+                Calendar.getInstance().get(Calendar.YEAR).toString()
+            }
 
             val percent = if (lifeProgress != null) {
                 String.format(Locale.US, "%.1f", lifeProgress.percentLived)
@@ -1128,14 +1223,14 @@ class LifeDotsWallpaperService : WallpaperService() {
             var yOffset = startY + 50f
 
             for (goal in goalSettings.goals) {
-                val daysRemaining = ((goal.targetDate - now) / (1000 * 60 * 60 * 24)).toInt()
+                val daysRemaining = goal.calculateDaysRemaining(now)
 
-                val text = if (daysRemaining > 0) {
-                    "$daysRemaining days until ${goal.title}"
-                } else if (daysRemaining == 0) {
-                    "Today: ${goal.title}!"
-                } else {
-                    "${-daysRemaining} days since ${goal.title}"
+                val text = when {
+                    daysRemaining > 1 -> "$daysRemaining days until ${goal.title}"
+                    daysRemaining == 1 -> "1 day until ${goal.title}"
+                    daysRemaining == 0 -> "Today: ${goal.title}!"
+                    daysRemaining == -1 -> "1 day since ${goal.title}"
+                    else -> "${-daysRemaining} days since ${goal.title}"
                 }
 
                 textPaint.color = goal.color

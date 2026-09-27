@@ -94,6 +94,145 @@ data class LifeSettings(
     }
 }
 
+// Custom Year / Academic Year
+data class CustomRangeProgress(
+    val dayIndex: Int,
+    val totalDays: Int,
+    val daysRemaining: Int,
+    val percentCompleted: Float,
+    val isBeforeStart: Boolean,
+    val isAfterEnd: Boolean,
+    val isTodayInRange: Boolean
+) {
+    val percentage: Float get() = percentCompleted
+}
+
+data class CustomYearSettings(
+    val enabled: Boolean = false,
+    val startDate: Long = defaultStartDate(),
+    val endDate: Long = defaultEndDate()
+) {
+    companion object {
+        fun defaultStartDate(): Long {
+            val now = Calendar.getInstance()
+            val currentYear = now.get(Calendar.YEAR)
+            val currentMonth = now.get(Calendar.MONTH) // 0-indexed, Sep is 8
+            val startYear = if (currentMonth < Calendar.SEPTEMBER) currentYear - 1 else currentYear
+            return Calendar.getInstance().apply {
+                set(startYear, Calendar.SEPTEMBER, 1, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        }
+
+        fun defaultEndDate(): Long {
+            val now = Calendar.getInstance()
+            val currentYear = now.get(Calendar.YEAR)
+            val currentMonth = now.get(Calendar.MONTH)
+            val endYear = if (currentMonth >= Calendar.SEPTEMBER) currentYear + 1 else currentYear
+            return Calendar.getInstance().apply {
+                set(endYear, Calendar.MAY, 31, 23, 59, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+        }
+
+        fun createAcademicYearRange(): Pair<Long, Long> {
+            val now = Calendar.getInstance()
+            val currentYear = now.get(Calendar.YEAR)
+            val currentMonth = now.get(Calendar.MONTH)
+            val startYear = if (currentMonth < Calendar.SEPTEMBER) currentYear - 1 else currentYear
+            val start = Calendar.getInstance().apply {
+                set(startYear, Calendar.SEPTEMBER, 1, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val end = Calendar.getInstance().apply {
+                set(startYear + 1, Calendar.MAY, 31, 23, 59, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+            return Pair(start, end)
+        }
+
+        fun createSchoolYearRange(): Pair<Long, Long> {
+            val now = Calendar.getInstance()
+            val currentYear = now.get(Calendar.YEAR)
+            val currentMonth = now.get(Calendar.MONTH)
+            val startYear = if (currentMonth < Calendar.AUGUST) currentYear - 1 else currentYear
+            val start = Calendar.getInstance().apply {
+                set(startYear, Calendar.AUGUST, 1, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val end = Calendar.getInstance().apply {
+                set(startYear + 1, Calendar.JUNE, 30, 23, 59, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+            return Pair(start, end)
+        }
+
+        fun createCalendarYearRange(): Pair<Long, Long> {
+            val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+            val start = Calendar.getInstance().apply {
+                set(currentYear, Calendar.JANUARY, 1, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val end = Calendar.getInstance().apply {
+                set(currentYear, Calendar.DECEMBER, 31, 23, 59, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+            return Pair(start, end)
+        }
+    }
+
+    fun calculateProgress(nowMillis: Long = System.currentTimeMillis()): CustomRangeProgress {
+        val todayCal = Calendar.getInstance().apply {
+            timeInMillis = nowMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startCal = Calendar.getInstance().apply {
+            timeInMillis = startDate
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val endCal = Calendar.getInstance().apply {
+            timeInMillis = endDate
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val totalDiffMillis = endCal.timeInMillis - startCal.timeInMillis
+        val totalDays = (kotlin.math.round(totalDiffMillis.toDouble() / (1000.0 * 60 * 60 * 24)).toInt() + 1).coerceAtLeast(1)
+
+        val daysSinceStart = kotlin.math.round((todayCal.timeInMillis - startCal.timeInMillis).toDouble() / (1000.0 * 60 * 60 * 24)).toInt()
+
+        val isBeforeStart = todayCal.timeInMillis < startCal.timeInMillis
+        val isAfterEnd = todayCal.timeInMillis > endCal.timeInMillis
+
+        val dayIndex = when {
+            isBeforeStart -> 0
+            isAfterEnd -> totalDays
+            else -> daysSinceStart + 1
+        }
+
+        val daysRemaining = (totalDays - dayIndex).coerceAtLeast(0)
+        val percent = if (totalDays > 0) ((dayIndex.toFloat() / totalDays.toFloat()) * 100f).coerceIn(0f, 100f) else 0f
+
+        return CustomRangeProgress(
+            dayIndex = dayIndex,
+            totalDays = totalDays,
+            daysRemaining = daysRemaining,
+            percentCompleted = percent,
+            isBeforeStart = isBeforeStart,
+            isAfterEnd = isAfterEnd,
+            isTodayInRange = !isBeforeStart && !isAfterEnd
+        )
+    }
+}
+
 // Feature: Year Progress & Remaining Days
 enum class ProgressPosition {
     TOP, BOTTOM
@@ -267,7 +406,26 @@ data class Goal(
     val title: String,
     val targetDate: Long,
     val color: Int = 0xFF5BA0E9.toInt()
-)
+) {
+    fun calculateDaysRemaining(nowMillis: Long = System.currentTimeMillis()): Int {
+        val todayCal = Calendar.getInstance().apply {
+            timeInMillis = nowMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val targetCal = Calendar.getInstance().apply {
+            timeInMillis = targetDate
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val diffMillis = targetCal.timeInMillis - todayCal.timeInMillis
+        return kotlin.math.round(diffMillis.toDouble() / (1000.0 * 60 * 60 * 24)).toInt()
+    }
+}
 
 data class GoalSettings(
     val enabled: Boolean = false,
@@ -399,7 +557,8 @@ data class WallpaperSettings(
     val glassEffectSettings: GlassEffectSettings = GlassEffectSettings(),
     val treeEffectSettings: TreeEffectSettings = TreeEffectSettings(),
     val fluidEffectSettings: FluidEffectSettings = FluidEffectSettings(),
-    val visualTheme: VisualTheme = VisualTheme.CLASSIC
+    val visualTheme: VisualTheme = VisualTheme.CLASSIC,
+    val customYearSettings: CustomYearSettings = CustomYearSettings()
 )
 
 class LifeDotsPreferences(context: Context) {
@@ -544,6 +703,13 @@ class LifeDotsPreferences(context: Context) {
             quoteAuthor = prefs.getString(KEY_LIFE_QUOTE_AUTHOR, "SENECA") ?: "SENECA"
         )
 
+        // Custom Year / Academic Year Settings
+        val customYearSettings = CustomYearSettings(
+            enabled = prefs.getBoolean(KEY_CUSTOM_YEAR_ENABLED, false),
+            startDate = prefs.getLong(KEY_CUSTOM_YEAR_START, CustomYearSettings.defaultStartDate()),
+            endDate = prefs.getLong(KEY_CUSTOM_YEAR_END, CustomYearSettings.defaultEndDate())
+        )
+
         return WallpaperSettings(
             timeScale = timeScale,
             lifeSettings = lifeSettings,
@@ -567,7 +733,8 @@ class LifeDotsPreferences(context: Context) {
             glassEffectSettings = glassEffectSettings,
             treeEffectSettings = treeEffectSettings,
             fluidEffectSettings = fluidEffectSettings,
-            visualTheme = visualTheme
+            visualTheme = visualTheme,
+            customYearSettings = customYearSettings
         )
     }
 
@@ -1107,6 +1274,42 @@ class LifeDotsPreferences(context: Context) {
         notifyWallpaperChanged()
     }
 
+    // Custom Year / Academic Year setters
+    fun setCustomYearEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CUSTOM_YEAR_ENABLED, enabled).apply()
+        val newSettings = _settingsFlow.value.customYearSettings.copy(enabled = enabled)
+        _settingsFlow.value = _settingsFlow.value.copy(customYearSettings = newSettings)
+        notifyWallpaperChanged()
+    }
+
+    fun setCustomYearStartDate(startDate: Long) {
+        prefs.edit().putLong(KEY_CUSTOM_YEAR_START, startDate).apply()
+        val newSettings = _settingsFlow.value.customYearSettings.copy(startDate = startDate)
+        _settingsFlow.value = _settingsFlow.value.copy(customYearSettings = newSettings)
+        notifyWallpaperChanged()
+    }
+
+    fun setCustomYearEndDate(endDate: Long) {
+        prefs.edit().putLong(KEY_CUSTOM_YEAR_END, endDate).apply()
+        val newSettings = _settingsFlow.value.customYearSettings.copy(endDate = endDate)
+        _settingsFlow.value = _settingsFlow.value.copy(customYearSettings = newSettings)
+        notifyWallpaperChanged()
+    }
+
+    fun setCustomYearRange(startDate: Long, endDate: Long) {
+        prefs.edit()
+            .putLong(KEY_CUSTOM_YEAR_START, startDate)
+            .putLong(KEY_CUSTOM_YEAR_END, endDate)
+            .apply()
+        val newSettings = _settingsFlow.value.customYearSettings.copy(startDate = startDate, endDate = endDate)
+        _settingsFlow.value = _settingsFlow.value.copy(customYearSettings = newSettings)
+        notifyWallpaperChanged()
+    }
+
+    fun notifyDateChanged() {
+        notifyWallpaperChanged()
+    }
+
     private fun notifyWallpaperChanged() {
         wallpaperChangeListeners.forEach { it.invoke() }
     }
@@ -1164,6 +1367,11 @@ class LifeDotsPreferences(context: Context) {
         private const val KEY_GOALS_ENABLED = "goals_enabled"
         private const val KEY_GOALS_JSON = "goals_json"
         private const val KEY_GOALS_POSITION = "goals_position"
+
+        // Custom Year / Academic Year keys
+        private const val KEY_CUSTOM_YEAR_ENABLED = "custom_year_enabled"
+        private const val KEY_CUSTOM_YEAR_START = "custom_year_start"
+        private const val KEY_CUSTOM_YEAR_END = "custom_year_end"
 
         // Year Progress & Countdown keys
         private const val KEY_PROGRESS_ENABLED = "progress_enabled"

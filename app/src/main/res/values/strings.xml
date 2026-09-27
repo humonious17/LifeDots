@@ -54,4 +54,14 @@
     <string name="life_weeks_passed">%1$d weeks lived</string>
     <string name="life_weeks_remaining">%1$d weeks remaining</string>
     <string name="life_percentage">%1$s lived</string>
+
+    <!-- Custom Year / Academic Year -->
+    <string name="custom_year_section">Custom Year / Academic Year</string>
+    <string name="custom_year_enable">Custom Start &amp; Stop Date</string>
+    <string name="custom_year_desc">Follow an academic or custom calendar (e.g. September to May) instead of January to December</string>
+    <string name="custom_year_start">Start Date</string>
+    <string name="custom_year_end">End Date</string>
+    <string name="custom_year_academic_preset">Academic Year (Sep – May)</string>
+    <string name="custom_year_school_preset">School Year (Aug – Jun)</string>
+    <string name="custom_year_calendar_preset">Calendar Year (Jan – Dec)</string>
 </resources>

@@ -54,7 +54,7 @@
         <!-- Date Change Receiver -->
         <receiver
             android:name=".receiver.DateChangeReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.DATE_CHANGED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />

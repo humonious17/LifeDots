@@ -48,13 +48,13 @@ fun DatePickerDialog(
     onDateSelected: (Long) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val initialCalendar = remember {
+    val initialCalendar = remember(initialDate) {
         Calendar.getInstance().apply { timeInMillis = initialDate }
     }
 
-    var selectedYear by remember { mutableIntStateOf(initialCalendar.get(Calendar.YEAR)) }
-    var selectedMonth by remember { mutableIntStateOf(initialCalendar.get(Calendar.MONTH)) }
-    var selectedDay by remember { mutableIntStateOf(initialCalendar.get(Calendar.DAY_OF_MONTH)) }
+    var selectedYear by remember(initialDate) { mutableIntStateOf(initialCalendar.get(Calendar.YEAR)) }
+    var selectedMonth by remember(initialDate) { mutableIntStateOf(initialCalendar.get(Calendar.MONTH)) }
+    var selectedDay by remember(initialDate) { mutableIntStateOf(initialCalendar.get(Calendar.DAY_OF_MONTH)) }
     var isYearPickerOpen by remember { mutableStateOf(false) }
 
     val monthNames = listOf(
@@ -303,9 +303,15 @@ fun DatePickerDialog(
 
                     Button(
                         onClick = {
-                            val calendar = Calendar.getInstance()
-                            calendar.set(selectedYear, selectedMonth, selectedDay, 0, 0, 0)
-                            calendar.set(Calendar.MILLISECOND, 0)
+                            val calendar = Calendar.getInstance().apply {
+                                set(Calendar.YEAR, selectedYear)
+                                set(Calendar.MONTH, selectedMonth)
+                                set(Calendar.DAY_OF_MONTH, selectedDay)
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
                             onDateSelected(calendar.timeInMillis)
                         }
                     ) {

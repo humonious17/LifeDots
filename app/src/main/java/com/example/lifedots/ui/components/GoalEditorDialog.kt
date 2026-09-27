@@ -220,7 +220,12 @@ fun GoalEditorDialog(
 }
 
 private fun getDefaultTargetDate(): Long {
-    val calendar = Calendar.getInstance()
-    calendar.add(Calendar.DAY_OF_YEAR, 30) // Default to 30 days from now
+    val calendar = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_YEAR, 30) // Default to 30 days from now
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
     return calendar.timeInMillis
 }
