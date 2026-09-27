@@ -39,4 +39,19 @@
     <string name="show_remaining_days">Show Remaining Days</string>
     <string name="show_days_passed">Show Day Count</string>
     <string name="decimal_places">Decimals</string>
+
+    <!-- Time Scale & Life in Weeks -->
+    <string name="time_scale_section">Time Scale</string>
+    <string name="time_scale_year">Year in Days</string>
+    <string name="time_scale_life">Life in Weeks</string>
+    <string name="life_in_weeks_title">Life in Weeks (Memento Mori)</string>
+    <string name="life_birth_date">Date of Birth</string>
+    <string name="life_expectancy">Life Expectancy</string>
+    <string name="life_show_title">Top Header Title</string>
+    <string name="life_split_halves">Mid-Year Split</string>
+    <string name="life_show_year_labels">Year Markers</string>
+    <string name="life_show_quote">Footer Quote</string>
+    <string name="life_weeks_passed">%1$d weeks lived</string>
+    <string name="life_weeks_remaining">%1$d weeks remaining</string>
+    <string name="life_percentage">%1$s lived</string>
 </resources>

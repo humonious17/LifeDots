@@ -38,50 +38,62 @@
                                                                                                                                                                                                                                     
   ## Features                                                                                                                                                                                                                       
                                                                                                                                                                                                                                     
-  ### Core Visualization                                                                                                                                                                                                            
-  - **365/366 dots** representing each day of the year                                                                                                                                                                              
-  - **Today highlighting** with customizable accent color                                                                                                                                                                           
-  - **Multiple view modes**: Continuous grid, Monthly sections, or Calendar layout                                                                                                                                                  
-  - **Real-time updates** at midnight                                                                                                                                                                                               
-                                                                                                                                                                                                                                    
-  ### Themes & Colors                                                                                                                                                                                                               
-  - **Light, Dark, and AMOLED** themes                                                                                                                                                                                              
-  - **Fully custom colors** for background, filled dots, empty dots, and today                                                                                                                                                      
-  - **Adjustable transparency** for filled and empty dots independently                                                                                                                                                             
-                                                                                                                                                                                                                                    
-  ### Dot Customization                                                                                                                                                                                                             
-  - **4 shapes**: Circle, Square, Rounded Square, Diamond                                                                                                                                                                           
-  - **5 sizes**: Tiny to Huge                                                                                                                                                                                                       
-  - **4 grid densities**: Compact to Spacious                                                                                                                                                                                       
-  - **6 styles**: Flat, Gradient, Outlined, Soft Glow, Neon, Embossed                                                                                                                                                               
-                                                                                                                                                                                                                                    
-  ### 🆕 Animations                                                                                                                                                                                                                 
-  - **6 animation types**: Fade In, Pulse, Wave, Breathe, Ripple, Cascade                                                                                                                                                           
-  - Adjustable speed and intensity                                                                                                                                                                                                  
-  - Battery-conscious implementation                                                                                                                                                                                                
-                                                                                                                                                                                                                                    
-  ### 🆕 Glass Effects                                                                                                                                                                                                              
-  - **5 frosted glass styles**: Light Frost, Heavy Frost, Acrylic, Crystal, Ice                                                                                                                                                     
-  - Customizable blur, opacity, and tint color                                                                                                                                                                                      
-  - Beautiful layered aesthetics                                                                                                                                                                                                    
-                                                                                                                                                                                                                                    
-  ### 🆕 Tree Growth Mode                                                                                                                                                                                                           
-  Replace dots with a growing tree that represents your year:                                                                                                                                                                       
-  - **5 tree styles**: Simple, Detailed, Bonsai, Sakura, Willow                                                                                                                                                                     
-  - Custom colors for trunk, leaves, and blossoms                                                                                                                                                                                   
-  - Animated falling petals (Sakura)                                                                                                                                                                                                
-  - Swaying branches (Willow)                                                                                                                                                                                                       
-                                                                                                                                                                                                                                    
-  ### 🆕 Fluid Backgrounds                                                                                                                                                                                                          
-  - **5 animated backgrounds**: Water, Lava, Mercury, Plasma, Aurora                                                                                                                                                                
-  - Adjustable flow speed, turbulence, and color intensity                                                                                                                                                                          
-  - Smooth 60fps animations                                                                                                                                                                                                         
-                                                                                                                                                                                                                                    
-  ### Additional Features                                                                                                                                                                                                           
-  - **Background images** with blur and opacity controls                                                                                                                                                                            
-  - **Year Progress & Countdown** — view completion percentage and remaining days with customizable format, decimal precision, position, font size, alignment, and color
-  - **Footer text** with custom message, font size, alignment, and color (supports dynamic tags like `{percent}`, `{remaining}`, `{passed}`, `{total}`)
-  - **Goal countdown** — add important dates with countdown display                                                                                                                                                                 
+  ### 🆕 Life in Weeks (Memento Mori)
+  Visualize your entire lifespan week by week, inspired by the classic Memento Mori calendar:
+  - **Time Scale switcher**: seamlessly toggle between **Year in Days** (365 days) and **Life in Weeks** (52 weeks × expected lifespan)
+  - **Precise birth date tracker** with quick decade & multi-year date picker
+  - **Customizable life expectancy** (50 to 100 years, e.g., 80 years = 4,160 weeks)
+  - **Lived weeks filled**, current week distinctly highlighted, future weeks outlined
+  - **Mid-year split** (26 + gap + 26 weeks) matching classic Memento Mori poster layouts
+  - **Year marker numbers** (5, 10, 15... 80) along the edge
+  - **Header title** ("MEMENTO MORI" with authentic Roman serif typography)
+  - **Footer philosophical quote** (Seneca quote or custom reflection)
+  - **Life progress tracking**: see % of life lived and weeks remaining in preview, settings, and wallpaper
+
+  ### Core Visualization
+  - **365/366 dots** representing each day of the year
+  - **Today highlighting** with customizable accent color
+  - **Multiple view modes**: Continuous grid, Monthly sections, or Calendar layout
+  - **Real-time updates** at midnight
+
+  ### Themes & Colors
+  - **Light, Dark, and AMOLED** themes
+  - **Fully custom colors** for background, filled dots, empty dots, and today
+  - **Adjustable transparency** for filled and empty dots independently
+
+  ### Dot Customization
+  - **4 shapes**: Circle, Square, Rounded Square, Diamond
+  - **5 sizes**: Tiny to Huge
+  - **4 grid densities**: Compact to Spacious
+  - **6 styles**: Flat, Gradient, Outlined, Soft Glow, Neon, Embossed
+
+  ### 🆕 Animations
+  - **6 animation types**: Fade In, Pulse, Wave, Breathe, Ripple, Cascade
+  - Adjustable speed and intensity
+  - Battery-conscious implementation
+
+  ### 🆕 Glass Effects
+  - **5 frosted glass styles**: Light Frost, Heavy Frost, Acrylic, Crystal, Ice
+  - Customizable blur, opacity, and tint color
+  - Beautiful layered aesthetics
+
+  ### 🆕 Tree Growth Mode
+  Replace dots with a growing tree that represents your year:
+  - **5 tree styles**: Simple, Detailed, Bonsai, Sakura, Willow
+  - Custom colors for trunk, leaves, and blossoms
+  - Animated falling petals (Sakura)
+  - Swaying branches (Willow)
+
+  ### 🆕 Fluid Backgrounds
+  - **5 animated backgrounds**: Water, Lava, Mercury, Plasma, Aurora
+  - Adjustable flow speed, turbulence, and color intensity
+  - Smooth 60fps animations
+
+  ### Additional Features
+  - **Background images** with blur and opacity controls
+  - **Year / Life Progress & Countdown** — view completion percentage and remaining days/weeks with customizable format, decimal precision, position, font size, alignment, and color
+  - **Footer text** with custom message, font size, alignment, and color (supports dynamic tags like `{percent}`, `{remaining}`, `{passed}`, `{total}`, `{age}`)
+  - **Goal countdown** — add important dates with countdown display
   - **Position & scale controls** for perfect placement                                                                                                                                                                             
                                                                                                                                                                                                                                     
   ---                                                                                                                                                                                                                               

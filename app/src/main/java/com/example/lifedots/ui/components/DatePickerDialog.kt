@@ -55,6 +55,7 @@ fun DatePickerDialog(
     var selectedYear by remember { mutableIntStateOf(initialCalendar.get(Calendar.YEAR)) }
     var selectedMonth by remember { mutableIntStateOf(initialCalendar.get(Calendar.MONTH)) }
     var selectedDay by remember { mutableIntStateOf(initialCalendar.get(Calendar.DAY_OF_MONTH)) }
+    var isYearPickerOpen by remember { mutableStateOf(false) }
 
     val monthNames = listOf(
         "January", "February", "March", "April", "May", "June",
@@ -100,102 +101,190 @@ fun DatePickerDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = {
-                            if (selectedMonth == 0) {
-                                selectedMonth = 11
-                                selectedYear--
-                            } else {
-                                selectedMonth--
-                            }
-                            selectedDay = minOf(selectedDay, daysInMonth)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                selectedYear -= 1
+                                selectedDay = minOf(selectedDay, daysInMonth)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Text("«", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         }
-                    ) {
-                        Text("<", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        IconButton(
+                            onClick = {
+                                if (selectedMonth == 0) {
+                                    selectedMonth = 11
+                                    selectedYear--
+                                } else {
+                                    selectedMonth--
+                                }
+                                selectedDay = minOf(selectedDay, daysInMonth)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Text("<", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
 
-                    Text(
-                        text = "${monthNames[selectedMonth]} $selectedYear",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isYearPickerOpen) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent,
+                        modifier = Modifier.clickable { isYearPickerOpen = !isYearPickerOpen }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "${monthNames[selectedMonth]} $selectedYear",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isYearPickerOpen) "▲" else "▼",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                if (selectedMonth == 11) {
+                                    selectedMonth = 0
+                                    selectedYear++
+                                } else {
+                                    selectedMonth++
+                                }
+                                selectedDay = minOf(selectedDay, daysInMonth)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Text(">", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                        IconButton(
+                            onClick = {
+                                selectedYear += 1
+                                selectedDay = minOf(selectedDay, daysInMonth)
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Text("»", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (isYearPickerOpen) {
+                    val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
+                    val years = remember { (1920..(currentYear + 5)).toList().reversed() }
+                    val initialIndex = remember { (years.indexOf(selectedYear) - 4).coerceAtLeast(0) }
+                    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState(
+                        initialFirstVisibleItemIndex = initialIndex
                     )
 
-                    IconButton(
-                        onClick = {
-                            if (selectedMonth == 11) {
-                                selectedMonth = 0
-                                selectedYear++
-                            } else {
-                                selectedMonth++
-                            }
-                            selectedDay = minOf(selectedDay, daysInMonth)
-                        }
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        state = gridState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(240.dp)
+                            .padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(">", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Day of week headers
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa").forEach { day ->
-                        Text(
-                            text = day,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            modifier = Modifier.width(36.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Calendar grid
-                val totalCells = firstDayOfWeek + daysInMonth
-                val rows = (totalCells + 6) / 7
-
-                Column {
-                    for (row in 0 until rows) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            for (col in 0 until 7) {
-                                val cellIndex = row * 7 + col
-                                val dayNum = cellIndex - firstDayOfWeek + 1
-
-                                if (dayNum in 1..daysInMonth) {
-                                    val isSelected = dayNum == selectedDay
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (isSelected) MaterialTheme.colorScheme.primary
-                                                else Color.Transparent
-                                            )
-                                            .clickable { selectedDay = dayNum },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = dayNum.toString(),
-                                            fontSize = 14.sp,
-                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                            else MaterialTheme.colorScheme.onSurface
-                                        )
+                        items(years) { yr ->
+                            val isSelected = yr == selectedYear
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                    .clickable {
+                                        selectedYear = yr
+                                        isYearPickerOpen = false
+                                        selectedDay = minOf(selectedDay, daysInMonth)
                                     }
-                                } else {
-                                    Box(modifier = Modifier.size(36.dp))
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = yr.toString(),
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Day of week headers
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa").forEach { day ->
+                            Text(
+                                text = day,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.width(36.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Calendar grid
+                    val totalCells = firstDayOfWeek + daysInMonth
+                    val rows = (totalCells + 6) / 7
+
+                    Column {
+                        for (row in 0 until rows) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                for (col in 0 until 7) {
+                                    val cellIndex = row * 7 + col
+                                    val dayNum = cellIndex - firstDayOfWeek + 1
+
+                                    if (dayNum in 1..daysInMonth) {
+                                        val isSelected = dayNum == selectedDay
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                                    else Color.Transparent
+                                                )
+                                                .clickable { selectedDay = dayNum },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = dayNum.toString(),
+                                                fontSize = 14.sp,
+                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                                else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    } else {
+                                        Box(modifier = Modifier.size(36.dp))
+                                    }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
 

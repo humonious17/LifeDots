@@ -273,17 +273,26 @@ class LifeDotsWallpaperService : WallpaperService() {
             val topOffset = calculateTopOffset(canvas.width, canvas.height, settings)
             val bottomOffset = calculateBottomOffset(canvas.width, canvas.height, settings)
 
-            var topY = 0f
+            var topY = canvas.height * 0.04f
+
+            // Life in Weeks Title ("MEMENTO MORI")
+            if (settings.timeScale == TimeScale.LIFE && settings.lifeSettings.showTitle) {
+                drawLifeTitle(canvas, settings.lifeSettings, colors, topY + 40f)
+                topY += 60f
+            }
+
             // Feature 6: Draw goals at top if enabled and positioned there
             if (settings.goalSettings.enabled && settings.goalSettings.position == GoalPosition.TOP) {
                 drawGoals(canvas, settings.goalSettings, colors, topY, canvas.width.toFloat())
                 topY += 50f + (settings.goalSettings.goals.size * 40f)
             }
 
-            // Year Progress & Countdown at top if enabled
+            val lifeProgress = if (settings.timeScale == TimeScale.LIFE) settings.lifeSettings.calculateProgress() else null
+
+            // Year / Life Progress & Countdown at top if enabled
             if (settings.progressSettings.enabled && settings.progressSettings.position == ProgressPosition.TOP) {
                 val progressY = if (topY > 0f) topY + 10f else canvas.height * 0.06f
-                drawProgress(canvas, settings.progressSettings, dayOfYear, totalDays, progressY)
+                drawProgress(canvas, settings.progressSettings, dayOfYear, totalDays, lifeProgress, progressY)
             }
 
             // Apply position and scale transformations
@@ -303,8 +312,10 @@ class LifeDotsWallpaperService : WallpaperService() {
                 canvas.height / 2f
             )
 
-            // Check if tree effect should be drawn instead of dots
-            if (settings.treeEffectSettings.enabled) {
+            // Check visualization mode
+            if (settings.timeScale == TimeScale.LIFE) {
+                drawLifeInWeeksView(canvas, settings, colors, topOffset, bottomOffset)
+            } else if (settings.treeEffectSettings.enabled) {
                 drawTreeEffect(canvas, settings, colors, dayOfYear, totalDays, topOffset, bottomOffset)
             } else {
                 // Draw based on view mode
@@ -323,17 +334,24 @@ class LifeDotsWallpaperService : WallpaperService() {
 
             canvas.restore()
 
-            var bottomY = canvas.height - 40f
+            var bottomY = canvas.height - (canvas.height * 0.04f)
+
+            // Life Quote (Seneca) at bottom
+            if (settings.timeScale == TimeScale.LIFE && settings.lifeSettings.showQuote) {
+                val quoteHeight = calculateLifeQuoteHeight(canvas, settings.lifeSettings)
+                drawLifeQuote(canvas, settings.lifeSettings, colors, bottomY - quoteHeight)
+                bottomY -= (quoteHeight + 20f)
+            }
 
             // Feature 2: Draw footer text if enabled
             if (settings.footerTextSettings.enabled && settings.footerTextSettings.text.isNotEmpty()) {
-                drawFooterText(canvas, settings.footerTextSettings, bottomY)
+                drawFooterText(canvas, settings.footerTextSettings, lifeProgress, bottomY)
                 bottomY -= (settings.footerTextSettings.fontSize * 3 + 20f)
             }
 
-            // Year Progress & Countdown at bottom if enabled
+            // Year / Life Progress & Countdown at bottom if enabled
             if (settings.progressSettings.enabled && settings.progressSettings.position == ProgressPosition.BOTTOM) {
-                drawProgress(canvas, settings.progressSettings, dayOfYear, totalDays, bottomY)
+                drawProgress(canvas, settings.progressSettings, dayOfYear, totalDays, lifeProgress, bottomY)
                 bottomY -= (settings.progressSettings.fontSize * 3 + 20f)
             }
 
@@ -344,8 +362,34 @@ class LifeDotsWallpaperService : WallpaperService() {
             }
         }
 
+        private fun calculateLifeQuoteHeight(canvas: Canvas, lifeSettings: LifeSettings): Float {
+            if (!lifeSettings.showQuote || lifeSettings.quoteText.isEmpty()) return 0f
+            textPaint.textSize = 21f
+            textPaint.typeface = Typeface.create(Typeface.SERIF, Typeface.ITALIC)
+            val maxTextWidth = canvas.width * 0.86f
+            val words = lifeSettings.quoteText.split(" ")
+            var lineCount = 0
+            var currentLine = ""
+            for (word in words) {
+                val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+                if (textPaint.measureText(testLine) <= maxTextWidth) {
+                    currentLine = testLine
+                } else {
+                    if (currentLine.isNotEmpty()) lineCount++
+                    currentLine = word
+                }
+            }
+            if (currentLine.isNotEmpty()) lineCount++
+            val lineHeight = textPaint.textSize * 1.35f
+            val authorHeight = if (lifeSettings.quoteAuthor.isNotEmpty()) lineHeight + 10f else 0f
+            return (lineCount * lineHeight) + authorHeight
+        }
+
         private fun calculateTopOffset(width: Int, height: Int, settings: WallpaperSettings): Float {
-            var offset = height * 0.06f
+            var offset = height * 0.05f
+            if (settings.timeScale == TimeScale.LIFE && settings.lifeSettings.showTitle) {
+                offset += 70f
+            }
             if (settings.goalSettings.enabled && settings.goalSettings.position == GoalPosition.TOP) {
                 offset += 80f + (settings.goalSettings.goals.size * 30f)
             }
@@ -356,7 +400,10 @@ class LifeDotsWallpaperService : WallpaperService() {
         }
 
         private fun calculateBottomOffset(width: Int, height: Int, settings: WallpaperSettings): Float {
-            var offset = height * 0.06f
+            var offset = height * 0.05f
+            if (settings.timeScale == TimeScale.LIFE && settings.lifeSettings.showQuote) {
+                offset += 160f
+            }
             if (settings.footerTextSettings.enabled && settings.footerTextSettings.text.isNotEmpty()) {
                 offset += 60f
             }
@@ -856,21 +903,37 @@ class LifeDotsWallpaperService : WallpaperService() {
             }
         }
 
-        private fun drawFooterText(canvas: Canvas, footerSettings: FooterTextSettings, y: Float) {
+        private fun drawFooterText(
+            canvas: Canvas,
+            footerSettings: FooterTextSettings,
+            lifeProgress: LifeProgress?,
+            y: Float
+        ) {
             if (footerSettings.text.isEmpty()) return
 
             val dayOfYear = getCurrentDayOfYear()
             val totalDays = getTotalDaysInYear()
             val remainingDays = (totalDays - dayOfYear).coerceAtLeast(0)
-            val percent = String.format(Locale.US, "%.1f", (dayOfYear.toFloat() / totalDays.toFloat()) * 100f)
             val year = Calendar.getInstance().get(Calendar.YEAR).toString()
+
+            val percent = if (lifeProgress != null) {
+                String.format(Locale.US, "%.1f", lifeProgress.percentLived)
+            } else {
+                String.format(Locale.US, "%.1f", (dayOfYear.toFloat() / totalDays.toFloat()) * 100f)
+            }
+
+            val remaining = if (lifeProgress != null) lifeProgress.weeksRemaining.toString() else remainingDays.toString()
+            val passed = if (lifeProgress != null) lifeProgress.weeksLived.toString() else dayOfYear.toString()
+            val total = if (lifeProgress != null) lifeProgress.totalWeeks.toString() else totalDays.toString()
+            val age = lifeProgress?.ageYears?.toString() ?: ""
 
             val resolvedText = footerSettings.text
                 .replace("{percent}", percent)
-                .replace("{remaining}", remainingDays.toString())
-                .replace("{passed}", dayOfYear.toString())
-                .replace("{total}", totalDays.toString())
+                .replace("{remaining}", remaining)
+                .replace("{passed}", passed)
+                .replace("{total}", total)
                 .replace("{year}", year)
+                .replace("{age}", age)
 
             textPaint.color = footerSettings.color
             textPaint.textSize = footerSettings.fontSize * 3  // Scale for wallpaper
@@ -891,11 +954,12 @@ class LifeDotsWallpaperService : WallpaperService() {
             progressSettings: ProgressSettings,
             dayOfYear: Int,
             totalDays: Int,
+            lifeProgress: LifeProgress?,
             y: Float
         ) {
             if (!progressSettings.enabled) return
 
-            val text = progressSettings.formatText(dayOfYear, totalDays)
+            val text = progressSettings.formatText(dayOfYear, totalDays, lifeProgress)
             if (text.isEmpty()) return
 
             textPaint.color = progressSettings.color
@@ -910,6 +974,151 @@ class LifeDotsWallpaperService : WallpaperService() {
             }
 
             canvas.drawText(text, x, y, textPaint)
+        }
+
+        private fun drawLifeTitle(canvas: Canvas, lifeSettings: LifeSettings, colors: ThemeColors, y: Float) {
+            if (!lifeSettings.showTitle || lifeSettings.titleText.isEmpty()) return
+
+            textPaint.color = colors.filledDot
+            textPaint.textSize = 42f
+            textPaint.typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
+            textPaint.letterSpacing = 0.22f
+
+            val textWidth = textPaint.measureText(lifeSettings.titleText)
+            val x = (canvas.width - textWidth) / 2f
+
+            canvas.drawText(lifeSettings.titleText, x, y, textPaint)
+            textPaint.letterSpacing = 0f
+        }
+
+        private fun drawLifeQuote(canvas: Canvas, lifeSettings: LifeSettings, colors: ThemeColors, y: Float) {
+            if (!lifeSettings.showQuote || lifeSettings.quoteText.isEmpty()) return
+
+            textPaint.color = colors.emptyDot
+            textPaint.textSize = 21f
+            textPaint.typeface = Typeface.create(Typeface.SERIF, Typeface.ITALIC)
+
+            val maxTextWidth = canvas.width * 0.86f
+            val words = lifeSettings.quoteText.split(" ")
+            val lines = mutableListOf<String>()
+            var currentLine = ""
+
+            for (word in words) {
+                val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+                if (textPaint.measureText(testLine) <= maxTextWidth) {
+                    currentLine = testLine
+                } else {
+                    if (currentLine.isNotEmpty()) lines.add(currentLine)
+                    currentLine = word
+                }
+            }
+            if (currentLine.isNotEmpty()) lines.add(currentLine)
+
+            var lineY = y
+            val lineHeight = textPaint.textSize * 1.35f
+
+            for (line in lines) {
+                val textWidth = textPaint.measureText(line)
+                val x = (canvas.width - textWidth) / 2f
+                canvas.drawText(line, x, lineY, textPaint)
+                lineY += lineHeight
+            }
+
+            if (lifeSettings.quoteAuthor.isNotEmpty()) {
+                lineY += 6f
+                textPaint.textSize = 19f
+                textPaint.typeface = Typeface.create(Typeface.SERIF, Typeface.NORMAL)
+                textPaint.letterSpacing = 0.15f
+                val authorText = "— ${lifeSettings.quoteAuthor.uppercase()} —"
+                val textWidth = textPaint.measureText(authorText)
+                val x = (canvas.width - textWidth) / 2f
+                canvas.drawText(authorText, x, lineY, textPaint)
+                textPaint.letterSpacing = 0f
+            }
+        }
+
+        private fun drawLifeInWeeksView(
+            canvas: Canvas,
+            settings: WallpaperSettings,
+            colors: ThemeColors,
+            topOffset: Float,
+            bottomOffset: Float
+        ) {
+            val lifeSettings = settings.lifeSettings
+            val progress = lifeSettings.calculateProgress()
+            val rows = lifeSettings.lifeExpectancyYears
+            val cols = 52
+
+            val showYearLabels = lifeSettings.showYearLabels
+            val splitHalves = lifeSettings.splitHalves
+
+            val yearLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = colors.emptyDot
+                alpha = 180
+                typeface = Typeface.DEFAULT
+            }
+
+            val horizontalMargin = canvas.width * 0.04f
+            val labelMargin = if (showYearLabels) 40f else 0f
+
+            val availableWidth = canvas.width - (2 * horizontalMargin) - labelMargin
+            val availableHeight = canvas.height - topOffset - bottomOffset
+
+            val gapMultiplier = if (splitHalves) 1.2f else 0f
+            val totalColSlots = 52f + gapMultiplier
+
+            val cellSizeByWidth = availableWidth / totalColSlots
+            val cellSizeByHeight = availableHeight / rows.toFloat()
+            val cellSize = minOf(cellSizeByWidth, cellSizeByHeight)
+
+            val gapWidth = if (splitHalves) cellSize * gapMultiplier else 0f
+
+            val dotSizeMultiplier = when (settings.dotSize) {
+                DotSize.TINY -> 0.55f
+                DotSize.SMALL -> 0.65f
+                DotSize.MEDIUM -> 0.75f
+                DotSize.LARGE -> 0.85f
+                DotSize.HUGE -> 0.95f
+            }
+            val dotRadius = (cellSize / 2f) * dotSizeMultiplier
+
+            val gridWidth = (52 * cellSize) + gapWidth
+            val gridHeight = rows * cellSize
+
+            val startX = (canvas.width - gridWidth - labelMargin) / 2f
+            val startY = topOffset + (availableHeight - gridHeight) / 2f
+
+            yearLabelPaint.textSize = (cellSize * 0.75f).coerceIn(12f, 26f)
+
+            // Reset animation counters
+            currentDotIndex = 0
+            totalDotsInView = rows * cols
+
+            for (r in 0 until rows) {
+                val cy = startY + (r * cellSize) + (cellSize / 2f)
+
+                // Draw year label on the right (e.g. for year 5, 10, 15, ..., 80)
+                if (showYearLabels && (r + 1) % 5 == 0) {
+                    val labelText = "${r + 1}"
+                    val labelX = startX + gridWidth + 8f
+                    val labelY = cy + (yearLabelPaint.textSize / 3f)
+                    canvas.drawText(labelText, labelX, labelY, yearLabelPaint)
+                }
+
+                for (c in 0 until cols) {
+                    val dotIndex = r * 52 + c
+                    val colOffset = if (splitHalves && c >= 26) gapWidth else 0f
+                    val cx = startX + (c * cellSize) + colOffset + (cellSize / 2f)
+
+                    val dotType = when {
+                        dotIndex == progress.currentDotIndex && settings.highlightToday -> DotType.TODAY
+                        dotIndex < progress.currentDotIndex -> DotType.FILLED
+                        else -> DotType.EMPTY
+                    }
+
+                    drawStyledDot(canvas, cx, cy, dotRadius, dotType, settings, colors)
+                }
+            }
         }
 
         private fun drawGoals(canvas: Canvas, goalSettings: GoalSettings, colors: ThemeColors, startY: Float, width: Float) {
