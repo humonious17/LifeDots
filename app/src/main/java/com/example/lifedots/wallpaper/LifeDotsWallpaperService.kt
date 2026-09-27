@@ -42,6 +42,8 @@ import com.example.lifedots.preferences.GoalSettings
 import com.example.lifedots.preferences.GridDensity
 import com.example.lifedots.preferences.LifeDotsPreferences
 import com.example.lifedots.preferences.PositionSettings
+import com.example.lifedots.preferences.ProgressPosition
+import com.example.lifedots.preferences.ProgressSettings
 import com.example.lifedots.preferences.TextAlignment
 import com.example.lifedots.preferences.ThemeOption
 import com.example.lifedots.preferences.TreeEffectSettings
@@ -49,6 +51,7 @@ import com.example.lifedots.preferences.TreeStyle
 import com.example.lifedots.preferences.ViewMode
 import com.example.lifedots.preferences.WallpaperSettings
 import java.util.Calendar
+import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.pow
@@ -263,13 +266,21 @@ class LifeDotsWallpaperService : WallpaperService() {
             val dayOfYear = getCurrentDayOfYear()
             val totalDays = getTotalDaysInYear()
 
-            // Calculate available height considering goals and footer
+            // Calculate available height considering goals, progress, and footer
             val topOffset = calculateTopOffset(canvas.width, canvas.height, settings)
             val bottomOffset = calculateBottomOffset(canvas.width, canvas.height, settings)
 
+            var topY = 0f
             // Feature 6: Draw goals at top if enabled and positioned there
             if (settings.goalSettings.enabled && settings.goalSettings.position == GoalPosition.TOP) {
-                drawGoals(canvas, settings.goalSettings, colors, 0f, canvas.width.toFloat())
+                drawGoals(canvas, settings.goalSettings, colors, topY, canvas.width.toFloat())
+                topY += 50f + (settings.goalSettings.goals.size * 40f)
+            }
+
+            // Year Progress & Countdown at top if enabled
+            if (settings.progressSettings.enabled && settings.progressSettings.position == ProgressPosition.TOP) {
+                val progressY = if (topY > 0f) topY + 10f else canvas.height * 0.06f
+                drawProgress(canvas, settings.progressSettings, dayOfYear, totalDays, progressY)
             }
 
             // Apply position and scale transformations
@@ -309,15 +320,24 @@ class LifeDotsWallpaperService : WallpaperService() {
 
             canvas.restore()
 
-            // Feature 6: Draw goals at bottom if enabled and positioned there
-            if (settings.goalSettings.enabled && settings.goalSettings.position == GoalPosition.BOTTOM) {
-                val goalY = canvas.height - bottomOffset + 20f
-                drawGoals(canvas, settings.goalSettings, colors, goalY, canvas.width.toFloat())
-            }
+            var bottomY = canvas.height - 40f
 
             // Feature 2: Draw footer text if enabled
-            if (settings.footerTextSettings.enabled) {
-                drawFooterText(canvas, settings.footerTextSettings, canvas.height - 40f)
+            if (settings.footerTextSettings.enabled && settings.footerTextSettings.text.isNotEmpty()) {
+                drawFooterText(canvas, settings.footerTextSettings, bottomY)
+                bottomY -= (settings.footerTextSettings.fontSize * 3 + 20f)
+            }
+
+            // Year Progress & Countdown at bottom if enabled
+            if (settings.progressSettings.enabled && settings.progressSettings.position == ProgressPosition.BOTTOM) {
+                drawProgress(canvas, settings.progressSettings, dayOfYear, totalDays, bottomY)
+                bottomY -= (settings.progressSettings.fontSize * 3 + 20f)
+            }
+
+            // Feature 6: Draw goals at bottom if enabled and positioned there
+            if (settings.goalSettings.enabled && settings.goalSettings.position == GoalPosition.BOTTOM) {
+                val goalY = bottomY - (settings.goalSettings.goals.size * 40f)
+                drawGoals(canvas, settings.goalSettings, colors, goalY, canvas.width.toFloat())
             }
         }
 
@@ -326,6 +346,9 @@ class LifeDotsWallpaperService : WallpaperService() {
             if (settings.goalSettings.enabled && settings.goalSettings.position == GoalPosition.TOP) {
                 offset += 80f + (settings.goalSettings.goals.size * 30f)
             }
+            if (settings.progressSettings.enabled && settings.progressSettings.position == ProgressPosition.TOP) {
+                offset += settings.progressSettings.fontSize * 3 + 30f
+            }
             return offset
         }
 
@@ -333,6 +356,9 @@ class LifeDotsWallpaperService : WallpaperService() {
             var offset = height * 0.06f
             if (settings.footerTextSettings.enabled && settings.footerTextSettings.text.isNotEmpty()) {
                 offset += 60f
+            }
+            if (settings.progressSettings.enabled && settings.progressSettings.position == ProgressPosition.BOTTOM) {
+                offset += settings.progressSettings.fontSize * 3 + 30f
             }
             if (settings.goalSettings.enabled && settings.goalSettings.position == GoalPosition.BOTTOM) {
                 offset += 80f + (settings.goalSettings.goals.size * 30f)
@@ -830,18 +856,57 @@ class LifeDotsWallpaperService : WallpaperService() {
         private fun drawFooterText(canvas: Canvas, footerSettings: FooterTextSettings, y: Float) {
             if (footerSettings.text.isEmpty()) return
 
+            val dayOfYear = getCurrentDayOfYear()
+            val totalDays = getTotalDaysInYear()
+            val remainingDays = (totalDays - dayOfYear).coerceAtLeast(0)
+            val percent = String.format(Locale.US, "%.1f", (dayOfYear.toFloat() / totalDays.toFloat()) * 100f)
+            val year = Calendar.getInstance().get(Calendar.YEAR).toString()
+
+            val resolvedText = footerSettings.text
+                .replace("{percent}", percent)
+                .replace("{remaining}", remainingDays.toString())
+                .replace("{passed}", dayOfYear.toString())
+                .replace("{total}", totalDays.toString())
+                .replace("{year}", year)
+
             textPaint.color = footerSettings.color
             textPaint.textSize = footerSettings.fontSize * 3  // Scale for wallpaper
             textPaint.typeface = Typeface.DEFAULT
 
-            val textWidth = textPaint.measureText(footerSettings.text)
+            val textWidth = textPaint.measureText(resolvedText)
             val x = when (footerSettings.alignment) {
                 TextAlignment.LEFT -> 40f
                 TextAlignment.CENTER -> (canvas.width - textWidth) / 2
                 TextAlignment.RIGHT -> canvas.width - textWidth - 40f
             }
 
-            canvas.drawText(footerSettings.text, x, y, textPaint)
+            canvas.drawText(resolvedText, x, y, textPaint)
+        }
+
+        private fun drawProgress(
+            canvas: Canvas,
+            progressSettings: ProgressSettings,
+            dayOfYear: Int,
+            totalDays: Int,
+            y: Float
+        ) {
+            if (!progressSettings.enabled) return
+
+            val text = progressSettings.formatText(dayOfYear, totalDays)
+            if (text.isEmpty()) return
+
+            textPaint.color = progressSettings.color
+            textPaint.textSize = progressSettings.fontSize * 3  // Scale for wallpaper
+            textPaint.typeface = Typeface.DEFAULT
+
+            val textWidth = textPaint.measureText(text)
+            val x = when (progressSettings.alignment) {
+                TextAlignment.LEFT -> 40f
+                TextAlignment.CENTER -> (canvas.width - textWidth) / 2
+                TextAlignment.RIGHT -> canvas.width - textWidth - 40f
+            }
+
+            canvas.drawText(text, x, y, textPaint)
         }
 
         private fun drawGoals(canvas: Canvas, goalSettings: GoalSettings, colors: ThemeColors, startY: Float, width: Float) {

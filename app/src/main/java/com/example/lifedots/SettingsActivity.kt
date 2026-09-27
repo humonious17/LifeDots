@@ -76,6 +76,9 @@ import com.example.lifedots.preferences.Goal
 import com.example.lifedots.preferences.GoalPosition
 import com.example.lifedots.preferences.GridDensity
 import com.example.lifedots.preferences.LifeDotsPreferences
+import com.example.lifedots.preferences.PositionSettings
+import com.example.lifedots.preferences.ProgressPosition
+import com.example.lifedots.preferences.ProgressSettings
 import com.example.lifedots.preferences.TextAlignment
 import com.example.lifedots.preferences.ThemeOption
 import com.example.lifedots.preferences.TreeStyle
@@ -86,6 +89,7 @@ import com.example.lifedots.ui.components.ColorPickerDialog
 import com.example.lifedots.ui.components.GoalEditorDialog
 import com.example.lifedots.ui.theme.LifeDotsTheme
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -125,6 +129,7 @@ fun SettingsScreen(
     var showEmptyColorPicker by remember { mutableStateOf(false) }
     var showTodayColorPicker by remember { mutableStateOf(false) }
     var showFooterColorPicker by remember { mutableStateOf(false) }
+    var showProgressColorPicker by remember { mutableStateOf(false) }
     var showGoalEditor by remember { mutableStateOf(false) }
     var editingGoal by remember { mutableStateOf<Goal?>(null) }
     var showGlassTintPicker by remember { mutableStateOf(false) }
@@ -764,6 +769,12 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Tip: Use {percent}, {remaining}, {passed}, or {total} for live stats",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
 
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -825,6 +836,237 @@ fun SettingsScreen(
                                         .background(Color(settings.footerTextSettings.color))
                                         .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                                         .clickable { showFooterColorPicker = true }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ===== Year Progress & Countdown Section =====
+        SettingsSection(title = "Year Progress & Countdown") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Show Year Progress", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Display percentage and remaining days", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        }
+                        Switch(
+                            checked = settings.progressSettings.enabled,
+                            onCheckedChange = { preferences.setProgressEnabled(it) }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = settings.progressSettings.enabled,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Live Preview Box
+                            val calendar = remember { Calendar.getInstance() }
+                            val dayOfYear = remember { calendar.get(Calendar.DAY_OF_YEAR) }
+                            val totalDays = remember { calendar.getActualMaximum(Calendar.DAY_OF_YEAR) }
+                            val previewText = remember(settings.progressSettings, dayOfYear, totalDays) {
+                                settings.progressSettings.formatText(dayOfYear, totalDays)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .padding(16.dp),
+                                contentAlignment = when (settings.progressSettings.alignment) {
+                                    TextAlignment.LEFT -> Alignment.CenterStart
+                                    TextAlignment.CENTER -> Alignment.Center
+                                    TextAlignment.RIGHT -> Alignment.CenterEnd
+                                }
+                            ) {
+                                Text(
+                                    text = previewText,
+                                    fontSize = settings.progressSettings.fontSize.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(settings.progressSettings.color)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text("Display Options", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Show Percentage", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Switch(
+                                    checked = settings.progressSettings.showPercentage,
+                                    onCheckedChange = { preferences.setProgressShowPercentage(it) }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Show Remaining Days", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Switch(
+                                    checked = settings.progressSettings.showRemainingDays,
+                                    onCheckedChange = { preferences.setProgressShowRemaining(it) }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Show Day Count", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Switch(
+                                    checked = settings.progressSettings.showDaysPassed,
+                                    onCheckedChange = { preferences.setProgressShowPassed(it) }
+                                )
+                            }
+
+                            if (settings.progressSettings.showPercentage) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("Percentage Decimals", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    DecimalPlacesOption(
+                                        label = "0 (24%)",
+                                        places = 0,
+                                        isSelected = settings.progressSettings.decimalPlaces == 0,
+                                        onClick = { preferences.setProgressDecimalPlaces(0) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    DecimalPlacesOption(
+                                        label = "1 (24.5%)",
+                                        places = 1,
+                                        isSelected = settings.progressSettings.decimalPlaces == 1,
+                                        onClick = { preferences.setProgressDecimalPlaces(1) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    DecimalPlacesOption(
+                                        label = "2 (24.45%)",
+                                        places = 2,
+                                        isSelected = settings.progressSettings.decimalPlaces == 2,
+                                        onClick = { preferences.setProgressDecimalPlaces(2) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text("Position", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ProgressPositionOption(
+                                    label = "Top",
+                                    position = ProgressPosition.TOP,
+                                    isSelected = settings.progressSettings.position == ProgressPosition.TOP,
+                                    onClick = { preferences.setProgressPosition(ProgressPosition.TOP) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                ProgressPositionOption(
+                                    label = "Bottom",
+                                    position = ProgressPosition.BOTTOM,
+                                    isSelected = settings.progressSettings.position == ProgressPosition.BOTTOM,
+                                    onClick = { preferences.setProgressPosition(ProgressPosition.BOTTOM) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Font Size", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${settings.progressSettings.fontSize.roundToInt()}sp", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                            Slider(
+                                value = settings.progressSettings.fontSize,
+                                onValueChange = { preferences.setProgressFontSize(it) },
+                                valueRange = 10f..24f
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text("Alignment", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                TextAlignmentOption(
+                                    label = "Left",
+                                    alignment = TextAlignment.LEFT,
+                                    isSelected = settings.progressSettings.alignment == TextAlignment.LEFT,
+                                    onClick = { preferences.setProgressAlignment(TextAlignment.LEFT) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextAlignmentOption(
+                                    label = "Center",
+                                    alignment = TextAlignment.CENTER,
+                                    isSelected = settings.progressSettings.alignment == TextAlignment.CENTER,
+                                    onClick = { preferences.setProgressAlignment(TextAlignment.CENTER) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextAlignmentOption(
+                                    label = "Right",
+                                    alignment = TextAlignment.RIGHT,
+                                    isSelected = settings.progressSettings.alignment == TextAlignment.RIGHT,
+                                    onClick = { preferences.setProgressAlignment(TextAlignment.RIGHT) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Color", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(settings.progressSettings.color))
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                        .clickable { showProgressColorPicker = true }
                                 )
                             }
                         }
@@ -1704,6 +1946,19 @@ fun SettingsScreen(
                 showFooterColorPicker = false
             },
             onDismiss = { showFooterColorPicker = false }
+        )
+    }
+
+    // Progress color picker
+    if (showProgressColorPicker) {
+        ColorPickerDialog(
+            initialColor = settings.progressSettings.color,
+            title = "Progress Text Color",
+            onColorSelected = {
+                preferences.setProgressColor(it)
+                showProgressColorPicker = false
+            },
+            onDismiss = { showProgressColorPicker = false }
         )
     }
 
@@ -2653,3 +2908,84 @@ fun FluidStyleOption(
         }
     }
 }
+
+@Composable
+fun ProgressPositionOption(
+    label: String,
+    position: ProgressPosition,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp, 40.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), RoundedCornerShape(4.dp)),
+                contentAlignment = if (position == ProgressPosition.TOP) Alignment.TopCenter else Alignment.BottomCenter
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .width(20.dp)
+                        .height(4.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+fun DecimalPlacesOption(
+    label: String,
+    places: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+

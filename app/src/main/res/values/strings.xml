@@ -32,4 +32,11 @@
     <!-- Info -->
     <string name="days_passed">%1$d days passed</string>
     <string name="days_remaining">%1$d days remaining</string>
+    <string name="year_percentage">%1$s completed</string>
+    <string name="year_progress_section">Year Progress</string>
+    <string name="enable_year_progress">Show Year Progress</string>
+    <string name="show_percentage">Show Percentage</string>
+    <string name="show_remaining_days">Show Remaining Days</string>
+    <string name="show_days_passed">Show Day Count</string>
+    <string name="decimal_places">Decimals</string>
 </resources>

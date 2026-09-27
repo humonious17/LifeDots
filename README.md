@@ -79,7 +79,8 @@
                                                                                                                                                                                                                                     
   ### Additional Features                                                                                                                                                                                                           
   - **Background images** with blur and opacity controls                                                                                                                                                                            
-  - **Footer text** with custom message, font size, alignment, and color                                                                                                                                                            
+  - **Year Progress & Countdown** — view completion percentage and remaining days with customizable format, decimal precision, position, font size, alignment, and color
+  - **Footer text** with custom message, font size, alignment, and color (supports dynamic tags like `{percent}`, `{remaining}`, `{passed}`, `{total}`)
   - **Goal countdown** — add important dates with countdown display                                                                                                                                                                 
   - **Position & scale controls** for perfect placement                                                                                                                                                                             
                                                                                                                                                                                                                                     

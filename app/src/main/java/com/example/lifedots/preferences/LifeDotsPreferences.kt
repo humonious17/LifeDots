@@ -7,7 +7,68 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 import java.util.UUID
+import kotlin.math.roundToInt
+
+// Feature: Year Progress & Remaining Days
+enum class ProgressPosition {
+    TOP, BOTTOM
+}
+
+data class ProgressSettings(
+    val enabled: Boolean = false,
+    val showPercentage: Boolean = true,
+    val showRemainingDays: Boolean = true,
+    val showDaysPassed: Boolean = false,
+    val decimalPlaces: Int = 1,
+    val fontSize: Float = 14f,
+    val color: Int = 0xFFFFFFFF.toInt(),
+    val alignment: TextAlignment = TextAlignment.CENTER,
+    val position: ProgressPosition = ProgressPosition.BOTTOM
+) {
+    fun formatText(dayOfYear: Int, totalDays: Int): String {
+        val remainingDays = (totalDays - dayOfYear).coerceAtLeast(0)
+        val percentage = (dayOfYear.toFloat() / totalDays.toFloat()) * 100f
+        val formattedPercent = if (decimalPlaces <= 0) {
+            "${percentage.roundToInt()}%"
+        } else {
+            String.format(Locale.US, "%.${decimalPlaces}f%%", percentage)
+        }
+
+        val parts = mutableListOf<String>()
+
+        if (showDaysPassed && !showPercentage && !showRemainingDays) {
+            parts.add("Day $dayOfYear of $totalDays")
+        } else if (showDaysPassed) {
+            parts.add("Day $dayOfYear/$totalDays")
+        }
+
+        if (showPercentage) {
+            if (!showRemainingDays && !showDaysPassed) {
+                parts.add("$formattedPercent completed")
+            } else {
+                parts.add(formattedPercent)
+            }
+        }
+
+        if (showRemainingDays) {
+            if (!showPercentage && !showDaysPassed) {
+                val daysText = if (remainingDays == 1) "1 day remaining" else "$remainingDays days remaining"
+                parts.add(daysText)
+            } else {
+                val daysText = if (remainingDays == 1) "1 day left" else "$remainingDays days left"
+                parts.add(daysText)
+            }
+        }
+
+        if (parts.isEmpty()) {
+            return "$formattedPercent • ${if (remainingDays == 1) "1 day left" else "$remainingDays days left"}"
+        }
+
+        return parts.joinToString(" • ")
+    }
+}
 
 enum class ThemeOption {
     LIGHT, DARK, AMOLED, CUSTOM
@@ -205,6 +266,7 @@ data class WallpaperSettings(
     val calendarViewSettings: CalendarViewSettings = CalendarViewSettings(),
     val backgroundSettings: BackgroundSettings = BackgroundSettings(),
     val goalSettings: GoalSettings = GoalSettings(),
+    val progressSettings: ProgressSettings = ProgressSettings(),
     // Advanced feature settings
     val positionSettings: PositionSettings = PositionSettings(),
     val animationSettings: AnimationSettings = AnimationSettings(),
@@ -282,6 +344,19 @@ class LifeDotsPreferences(context: Context) {
             position = GoalPosition.valueOf(prefs.getString(KEY_GOALS_POSITION, GoalPosition.TOP.name) ?: GoalPosition.TOP.name)
         )
 
+        // Year Progress & Countdown Settings
+        val progressSettings = ProgressSettings(
+            enabled = prefs.getBoolean(KEY_PROGRESS_ENABLED, false),
+            showPercentage = prefs.getBoolean(KEY_PROGRESS_SHOW_PERCENTAGE, true),
+            showRemainingDays = prefs.getBoolean(KEY_PROGRESS_SHOW_REMAINING, true),
+            showDaysPassed = prefs.getBoolean(KEY_PROGRESS_SHOW_PASSED, false),
+            decimalPlaces = prefs.getInt(KEY_PROGRESS_DECIMAL_PLACES, 1),
+            fontSize = prefs.getFloat(KEY_PROGRESS_FONT_SIZE, 14f),
+            color = prefs.getInt(KEY_PROGRESS_COLOR, 0xFFFFFFFF.toInt()),
+            alignment = TextAlignment.valueOf(prefs.getString(KEY_PROGRESS_ALIGNMENT, TextAlignment.CENTER.name) ?: TextAlignment.CENTER.name),
+            position = ProgressPosition.valueOf(prefs.getString(KEY_PROGRESS_POSITION, ProgressPosition.BOTTOM.name) ?: ProgressPosition.BOTTOM.name)
+        )
+
         // Position Settings
         val positionSettings = PositionSettings(
             horizontalOffset = prefs.getFloat(KEY_HORIZONTAL_OFFSET, 0f),
@@ -342,6 +417,7 @@ class LifeDotsPreferences(context: Context) {
             calendarViewSettings = calendarViewSettings,
             backgroundSettings = backgroundSettings,
             goalSettings = goalSettings,
+            progressSettings = progressSettings,
             positionSettings = positionSettings,
             animationSettings = animationSettings,
             glassEffectSettings = glassEffectSettings,
@@ -581,6 +657,70 @@ class LifeDotsPreferences(context: Context) {
         notifyWallpaperChanged()
     }
 
+    // Feature: Progress & Remaining Days setters
+    fun setProgressEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_PROGRESS_ENABLED, enabled).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(enabled = enabled)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressShowPercentage(show: Boolean) {
+        prefs.edit().putBoolean(KEY_PROGRESS_SHOW_PERCENTAGE, show).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(showPercentage = show)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressShowRemaining(show: Boolean) {
+        prefs.edit().putBoolean(KEY_PROGRESS_SHOW_REMAINING, show).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(showRemainingDays = show)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressShowPassed(show: Boolean) {
+        prefs.edit().putBoolean(KEY_PROGRESS_SHOW_PASSED, show).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(showDaysPassed = show)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressDecimalPlaces(places: Int) {
+        prefs.edit().putInt(KEY_PROGRESS_DECIMAL_PLACES, places).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(decimalPlaces = places)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressFontSize(size: Float) {
+        prefs.edit().putFloat(KEY_PROGRESS_FONT_SIZE, size).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(fontSize = size)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressColor(color: Int) {
+        prefs.edit().putInt(KEY_PROGRESS_COLOR, color).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(color = color)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressAlignment(alignment: TextAlignment) {
+        prefs.edit().putString(KEY_PROGRESS_ALIGNMENT, alignment.name).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(alignment = alignment)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
+    fun setProgressPosition(position: ProgressPosition) {
+        prefs.edit().putString(KEY_PROGRESS_POSITION, position.name).apply()
+        val newProgress = _settingsFlow.value.progressSettings.copy(position = position)
+        _settingsFlow.value = _settingsFlow.value.copy(progressSettings = newProgress)
+        notifyWallpaperChanged()
+    }
+
     // ===== Position Settings setters =====
     fun setHorizontalOffset(offset: Float) {
         prefs.edit().putFloat(KEY_HORIZONTAL_OFFSET, offset).apply()
@@ -800,6 +940,17 @@ class LifeDotsPreferences(context: Context) {
         private const val KEY_GOALS_ENABLED = "goals_enabled"
         private const val KEY_GOALS_JSON = "goals_json"
         private const val KEY_GOALS_POSITION = "goals_position"
+
+        // Year Progress & Countdown keys
+        private const val KEY_PROGRESS_ENABLED = "progress_enabled"
+        private const val KEY_PROGRESS_SHOW_PERCENTAGE = "progress_show_percentage"
+        private const val KEY_PROGRESS_SHOW_REMAINING = "progress_show_remaining"
+        private const val KEY_PROGRESS_SHOW_PASSED = "progress_show_passed"
+        private const val KEY_PROGRESS_DECIMAL_PLACES = "progress_decimal_places"
+        private const val KEY_PROGRESS_FONT_SIZE = "progress_font_size"
+        private const val KEY_PROGRESS_COLOR = "progress_color"
+        private const val KEY_PROGRESS_ALIGNMENT = "progress_alignment"
+        private const val KEY_PROGRESS_POSITION = "progress_position"
 
         // Position Settings keys
         private const val KEY_HORIZONTAL_OFFSET = "horizontal_offset"

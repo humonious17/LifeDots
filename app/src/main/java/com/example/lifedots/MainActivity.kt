@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.example.lifedots.ui.theme.LifeDotsTheme
 import com.example.lifedots.wallpaper.LifeDotsWallpaperService
 import java.util.Calendar
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -127,17 +128,21 @@ fun OnboardingScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Days counter
+        // Days counter with percentage
+        val percentage = (dayOfYear.toFloat() / totalDays.toFloat()) * 100f
+        val remainingDays = totalDays - dayOfYear
+
         Text(
-            text = stringResource(R.string.days_passed, dayOfYear),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            text = stringResource(R.string.year_percentage, String.format(Locale.getDefault(), "%.1f%%", percentage)),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary
         )
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = stringResource(R.string.days_remaining, totalDays - dayOfYear),
+            text = "${stringResource(R.string.days_passed, dayOfYear)} • ${stringResource(R.string.days_remaining, remainingDays)}",
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
 
         Spacer(modifier = Modifier.height(48.dp))
