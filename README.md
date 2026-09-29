@@ -189,21 +189,29 @@
   │ Willow   │ Graceful weeping branches           │                                                                                                                                                                                
   └──────────┴─────────────────────────────────────┘                                                                                                                                                                                
   ---                                                                                                                                                                                                                               
-  Architecture                                                                                                                                                                                                                      
-                                                                                                                                                                                                                                    
-  app/                                                                                                                                                                                                                              
-  ├── src/main/java/com/example/lifedots/                                                                                                                                                                                           
-  │   ├── MainActivity.kt              # App launcher                                                                                                                                                                               
-  │   ├── SettingsActivity.kt          # Compose UI settings                                                                                                                                                                        
-  │   ├── preferences/                                                                                                                                                                                                              
-  │   │   └── LifeDotsPreferences.kt   # SharedPreferences wrapper                                                                                                                                                                  
-  │   ├── wallpaper/                                                                                                                                                                                                                
-  │   │   └── LifeDotsWallpaperService.kt  # Live wallpaper engine                                                                                                                                                                  
-  │   └── ui/                                                                                                                                                                                                                       
-  │       ├── components/              # Reusable Compose components                                                                                                                                                                
-  │       └── theme/                   # Material 3 theming                                                                                                                                                                         
-                                                                                                                                                                                                                                    
-  Tech Stack                                                                                                                                                                                                                        
+  ## Architecture
+
+```text
+app/
+├── src/main/java/com/example/lifedots/
+│   ├── MainActivity.kt              # App launcher & onboarding preview
+│   ├── SettingsActivity.kt          # Compose UI settings orchestrator
+│   ├── preferences/
+│   │   ├── WallpaperModels.kt       # Domain models, progress calculators & enums
+│   │   └── LifeDotsPreferences.kt   # SharedPreferences persistence & StateFlow
+│   ├── wallpaper/
+│   │   └── LifeDotsWallpaperService.kt  # Live wallpaper engine (Canvas rendering)
+│   ├── receiver/
+│   │   └── DateChangeReceiver.kt    # Midnight & date change broadcast receiver
+│   ├── util/
+│   │   └── ImageUtils.kt            # Bitmap decoding, scaling & blur utilities
+│   └── ui/
+│       ├── components/              # Dialogs (ColorPicker, DatePicker, GoalEditor)
+│       ├── settings/                # Modular settings sections & components
+│       └── theme/                   # Material 3 theming
+```
+
+## Tech Stack                                                                                                                                                                                                                        
                                                                                                                                                                                                                                     
   - Language: Kotlin 2.0                                                                                                                                                                                                            
   - UI Framework: Jetpack Compose (Settings)                                                                                                                                                                                        
