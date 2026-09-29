@@ -176,6 +176,7 @@ class LifeDotsWallpaperService : WallpaperService() {
                 addAction(Intent.ACTION_DATE_CHANGED)
                 addAction(Intent.ACTION_TIMEZONE_CHANGED)
                 addAction(Intent.ACTION_TIME_CHANGED)
+                addAction(Intent.ACTION_TIME_SET)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(dateChangeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
