@@ -24,10 +24,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.renderscript.Allocation
-import android.renderscript.Element
-import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicBlur
+import com.example.lifedots.util.ImageUtils
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import com.example.lifedots.preferences.AnimationSettings
@@ -913,34 +910,10 @@ class LifeDotsWallpaperService : WallpaperService() {
                 return cachedBackgroundBitmap
             }
 
-            try {
+            return try {
                 val uri = Uri.parse(uriString)
-                val inputStream = applicationContext.contentResolver.openInputStream(uri)
+                val scaledBitmap = ImageUtils.loadScaledBitmap(applicationContext, uri, targetWidth, targetHeight)
                     ?: return null
-
-                // Decode bounds first
-                val options = BitmapFactory.Options()
-                options.inJustDecodeBounds = true
-                BitmapFactory.decodeStream(inputStream, null, options)
-                inputStream.close()
-
-                // Calculate sample size
-                options.inSampleSize = calculateInSampleSize(options, targetWidth, targetHeight)
-                options.inJustDecodeBounds = false
-
-                // Decode actual bitmap
-                val inputStream2 = applicationContext.contentResolver.openInputStream(uri)
-                    ?: return null
-                val bitmap = BitmapFactory.decodeStream(inputStream2, null, options)
-                inputStream2.close()
-
-                if (bitmap == null) return null
-
-                // Scale to fit screen
-                val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
-                if (scaledBitmap != bitmap) {
-                    bitmap.recycle()
-                }
 
                 // Cache the result
                 cachedBackgroundBitmap?.recycle()
@@ -949,47 +922,14 @@ class LifeDotsWallpaperService : WallpaperService() {
                 cachedScreenWidth = targetWidth
                 cachedScreenHeight = targetHeight
 
-                return scaledBitmap
+                scaledBitmap
             } catch (e: Exception) {
-                return null
+                null
             }
         }
 
-        private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
-            val height = options.outHeight
-            val width = options.outWidth
-            var inSampleSize = 1
-
-            if (height > reqHeight || width > reqWidth) {
-                val halfHeight = height / 2
-                val halfWidth = width / 2
-                while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                    inSampleSize *= 2
-                }
-            }
-            return inSampleSize
-        }
-
-        @Suppress("DEPRECATION")
         private fun applyBlur(bitmap: Bitmap, radius: Float): Bitmap {
-            val clampedRadius = min(25f, radius)
-            if (clampedRadius <= 0) return bitmap
-
-            return try {
-                val rs = RenderScript.create(applicationContext)
-                val input = Allocation.createFromBitmap(rs, bitmap)
-                val output = Allocation.createTyped(rs, input.type)
-                val script = ScriptIntrinsicBlur.create(rs, Element.U8_4(rs))
-                script.setRadius(clampedRadius)
-                script.setInput(input)
-                script.forEach(output)
-                val blurredBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
-                output.copyTo(blurredBitmap)
-                rs.destroy()
-                blurredBitmap
-            } catch (e: Exception) {
-                bitmap
-            }
+            return ImageUtils.applyBlur(applicationContext, bitmap, radius)
         }
 
         private fun drawFooterText(
