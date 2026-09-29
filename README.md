@@ -200,7 +200,14 @@ app/
 │   │   ├── WallpaperModels.kt       # Domain models, progress calculators & enums
 │   │   └── LifeDotsPreferences.kt   # SharedPreferences persistence & StateFlow
 │   ├── wallpaper/
-│   │   └── LifeDotsWallpaperService.kt  # Live wallpaper engine (Canvas rendering)
+│   │   ├── LifeDotsWallpaperService.kt  # Live wallpaper engine lifecycle & orchestration
+│   │   └── renderer/                    # Specialized visual effect & layout renderers
+│   │       ├── DotGridRenderer.kt       # Grid layout, view modes & styled dot rendering
+│   │       ├── TreeEffectRenderer.kt    # Seasonal tree growth simulation & species
+│   │       ├── FluidEffectRenderer.kt   # Water, lava, mercury, plasma & aurora effects
+│   │       ├── GlassEffectRenderer.kt   # Frosted glass, acrylic & ice effect renderer
+│   │       ├── OverlayTextRenderer.kt   # Title, quote, footer, goals & progress text
+│   │       └── WallpaperRendererModels.kt # ThemeColors, GridConfig & DotType models
 │   ├── receiver/
 │   │   └── DateChangeReceiver.kt    # Midnight & date change broadcast receiver
 │   ├── util/
