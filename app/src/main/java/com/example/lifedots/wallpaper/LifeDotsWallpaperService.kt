@@ -175,7 +175,6 @@ class LifeDotsWallpaperService : WallpaperService() {
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_DATE_CHANGED)
                 addAction(Intent.ACTION_TIMEZONE_CHANGED)
-                addAction(Intent.ACTION_TIME_SET)
                 addAction(Intent.ACTION_TIME_CHANGED)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

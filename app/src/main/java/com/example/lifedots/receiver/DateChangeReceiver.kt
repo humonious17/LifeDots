@@ -11,8 +11,7 @@ class DateChangeReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_DATE_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
-            Intent.ACTION_TIME_CHANGED,
-            Intent.ACTION_TIME_SET -> {
+            Intent.ACTION_TIME_CHANGED -> {
                 // Trigger wallpaper redraw by notifying preferences change listeners
                 // This will cause the wallpaper service to refresh
                 val prefs = LifeDotsPreferences.getInstance(context)
