@@ -327,7 +327,7 @@ data class ProgressSettings(
 }
 
 enum class ThemeOption {
-    LIGHT, DARK, AMOLED, CUSTOM
+    LIGHT, DARK, AMOLED, CUSTOM, LIQUID_GLASS
 }
 
 enum class DotSize {

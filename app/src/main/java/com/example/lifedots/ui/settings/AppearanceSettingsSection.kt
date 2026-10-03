@@ -69,6 +69,16 @@ fun AppearanceSettingsSection(
         }
     }
 
+    Spacer(modifier = Modifier.height(8.dp))
+    ThemeOptionButton(
+        label = stringResource(R.string.theme_liquid_glass),
+        backgroundColor = Color(0xFF193953),
+        dotColor = Color(0xFF83F4DC),
+        isSelected = settings.theme == ThemeOption.LIQUID_GLASS,
+        onClick = { preferences.setTheme(ThemeOption.LIQUID_GLASS) },
+        modifier = Modifier.fillMaxWidth()
+    )
+
     // Custom Colors Section (visible when Custom theme selected)
     AnimatedVisibility(
         visible = settings.theme == ThemeOption.CUSTOM,

@@ -18,8 +18,31 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Supply these through your environment to build a distributable signed release.
+    val releaseStore = providers.environmentVariable("LIFEDOTS_KEYSTORE").orNull
+    signingConfigs {
+        if (releaseStore != null) {
+            create("distribution") {
+                storeFile = file(releaseStore)
+                storePassword = providers.environmentVariable("LIFEDOTS_STORE_PASSWORD").orNull
+                keyAlias = providers.environmentVariable("LIFEDOTS_KEY_ALIAS").orNull
+                keyPassword = providers.environmentVariable("LIFEDOTS_KEY_PASSWORD").orNull
+            }
+        }
+    }
+
     buildTypes {
+        // Installable local test build, separate from any differently signed existing app.
+        create("sideload") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".sideload"
+            versionNameSuffix = "-sideload"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            resValue("string", "app_name", "LifeDots Preview")
+        }
         release {
+            if (releaseStore != null) signingConfig = signingConfigs.getByName("distribution")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

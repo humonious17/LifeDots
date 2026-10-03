@@ -44,6 +44,8 @@ import com.example.lifedots.ui.settings.ContentSettingsSection
 import com.example.lifedots.ui.settings.EffectsSettingsSection
 import com.example.lifedots.ui.settings.TimeScaleSettingsSection
 import com.example.lifedots.ui.theme.LifeDotsTheme
+import com.example.lifedots.ui.theme.lifeDotsBackground
+import com.example.lifedots.preferences.ThemeOption
 
 class SettingsActivity : ComponentActivity() {
 
@@ -55,7 +57,8 @@ class SettingsActivity : ComponentActivity() {
         preferences = LifeDotsPreferences.getInstance(this)
 
         setContent {
-            LifeDotsTheme {
+            val appearance by preferences.settingsFlow.collectAsState()
+            LifeDotsTheme(liquidGlass = appearance.theme == ThemeOption.LIQUID_GLASS) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     SettingsScreen(
                         preferences = preferences,
@@ -135,7 +138,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .lifeDotsBackground()
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {

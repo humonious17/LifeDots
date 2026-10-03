@@ -43,6 +43,7 @@ class LifeDotsWallpaperService : WallpaperService() {
         private var lastDrawnDay = -1
 
         // Specialized Renderers
+        private val liquidGlassRenderer = com.example.lifedots.wallpaper.renderer.LiquidGlassRenderer()
         private val glassEffectRenderer = GlassEffectRenderer()
         private val fluidEffectRenderer = FluidEffectRenderer()
         private val treeEffectRenderer = TreeEffectRenderer()
@@ -239,6 +240,10 @@ class LifeDotsWallpaperService : WallpaperService() {
             // Draw fluid effect background if enabled
             if (settings.fluidEffectSettings.enabled) {
                 fluidEffectRenderer.drawFluidBackground(canvas, settings.fluidEffectSettings, colors, fluidPhase)
+            }
+
+            if (settings.theme == com.example.lifedots.preferences.ThemeOption.LIQUID_GLASS) {
+                liquidGlassRenderer.draw(canvas)
             }
 
             dotGridRenderer.setupPaints(colors, settings)

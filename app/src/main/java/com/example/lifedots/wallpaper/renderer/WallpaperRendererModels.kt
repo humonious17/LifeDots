@@ -31,6 +31,12 @@ data class ThemeColors(
                     emptyDot = Color.parseColor("#2A2A2A"),
                     todayDot = Color.parseColor("#6AB0F9")
                 )
+                ThemeOption.LIQUID_GLASS -> ThemeColors(
+                    background = 0xFF0B182C.toInt(),
+                    filledDot = 0xFFD9F4FF.toInt(),
+                    emptyDot = 0xFF456078.toInt(),
+                    todayDot = 0xFF83F4DC.toInt()
+                )
                 ThemeOption.CUSTOM -> ThemeColors(
                     background = settings.customColors.backgroundColor,
                     filledDot = settings.customColors.filledDotColor,

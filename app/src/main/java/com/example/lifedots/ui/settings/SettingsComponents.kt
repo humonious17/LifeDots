@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import com.example.lifedots.ui.theme.LocalLiquidGlass
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,7 +32,13 @@ fun SettingsSection(
     title: String,
     content: @Composable () -> Unit
 ) {
-    Column {
+    val glass = LocalLiquidGlass.current
+    val shape = RoundedCornerShape(24.dp)
+    Column(modifier = if (glass) Modifier
+        .clip(shape)
+        .background(Brush.linearGradient(listOf(Color(0x263DDDCB), Color(0x147A77DA))))
+        .border(1.dp, Brush.linearGradient(listOf(Color(0x80FFFFFF), Color(0x10FFFFFF), Color(0x407FDBEA))), shape)
+        .padding(16.dp) else Modifier) {
         Text(
             text = title,
             fontSize = 14.sp,

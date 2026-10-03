@@ -64,4 +64,5 @@
     <string name="custom_year_academic_preset">Academic Year (Sep – May)</string>
     <string name="custom_year_school_preset">School Year (Aug – Jun)</string>
     <string name="custom_year_calendar_preset">Calendar Year (Jan – Dec)</string>
+    <string name="theme_liquid_glass">Liquid Glass</string>
 </resources>

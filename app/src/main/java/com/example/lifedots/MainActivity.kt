@@ -41,6 +41,8 @@ import com.example.lifedots.preferences.LifeDotsPreferences
 import com.example.lifedots.preferences.LifeProgress
 import com.example.lifedots.preferences.TimeScale
 import com.example.lifedots.ui.theme.LifeDotsTheme
+import com.example.lifedots.ui.theme.lifeDotsBackground
+import com.example.lifedots.preferences.ThemeOption
 import com.example.lifedots.wallpaper.LifeDotsWallpaperService
 import java.util.Calendar
 import java.util.Locale
@@ -54,7 +56,8 @@ class MainActivity : ComponentActivity() {
         preferences = LifeDotsPreferences.getInstance(this)
 
         setContent {
-            LifeDotsTheme {
+            val appearance by preferences.settingsFlow.collectAsState()
+            LifeDotsTheme(liquidGlass = appearance.theme == ThemeOption.LIQUID_GLASS) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     OnboardingScreen(
                         preferences = preferences,
@@ -104,7 +107,7 @@ fun OnboardingScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .lifeDotsBackground()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
