@@ -126,6 +126,8 @@ fun SettingsScreen(
             .lifeDotsBackground()
             .verticalScroll(rememberScrollState())
             .padding(SectionSpacing),
+        // Each section is wrapped in its own Column so it counts as one child here.
+        // Sections emit several composables, which would each get a gap otherwise.
         verticalArrangement = Arrangement.spacedBy(SectionSpacing)
     ) {
         Text(
@@ -136,45 +138,53 @@ fun SettingsScreen(
         )
 
         // Time scale and calendars
-        TimeScaleSettingsSection(
-            preferences = preferences,
-            settings = settings,
-            onShowCustomYearStartDatePicker = { showDate(DateTarget.CUSTOM_YEAR_START) },
-            onShowCustomYearEndDatePicker = { showDate(DateTarget.CUSTOM_YEAR_END) },
-            onShowBirthDatePicker = { showDate(DateTarget.BIRTH) }
-        )
+        Column {
+            TimeScaleSettingsSection(
+                preferences = preferences,
+                settings = settings,
+                onShowCustomYearStartDatePicker = { showDate(DateTarget.CUSTOM_YEAR_START) },
+                onShowCustomYearEndDatePicker = { showDate(DateTarget.CUSTOM_YEAR_END) },
+                onShowBirthDatePicker = { showDate(DateTarget.BIRTH) }
+            )
+        }
 
         // Appearance and themes
-        AppearanceSettingsSection(
-            preferences = preferences,
-            settings = settings,
-            onShowBgColorPicker = { showColor(ColorTarget.BACKGROUND) },
-            onShowFilledColorPicker = { showColor(ColorTarget.FILLED_DOT) },
-            onShowEmptyColorPicker = { showColor(ColorTarget.EMPTY_DOT) },
-            onShowTodayColorPicker = { showColor(ColorTarget.TODAY_DOT) }
-        )
+        Column {
+            AppearanceSettingsSection(
+                preferences = preferences,
+                settings = settings,
+                onShowBgColorPicker = { showColor(ColorTarget.BACKGROUND) },
+                onShowFilledColorPicker = { showColor(ColorTarget.FILLED_DOT) },
+                onShowEmptyColorPicker = { showColor(ColorTarget.EMPTY_DOT) },
+                onShowTodayColorPicker = { showColor(ColorTarget.TODAY_DOT) }
+            )
+        }
 
         // Content and overlays (footer, progress, background, goals)
-        ContentSettingsSection(
-            preferences = preferences,
-            settings = settings,
-            hasImagePermission = imagePicker.hasPermission,
-            onSelectImage = imagePicker.pick,
-            onShowFooterColorPicker = { showColor(ColorTarget.FOOTER) },
-            onShowProgressColorPicker = { showColor(ColorTarget.PROGRESS) },
-            onAddGoal = { show(SettingsDialog.GoalEditor(goal = null)) },
-            onEditGoal = { goal -> show(SettingsDialog.GoalEditor(goal)) }
-        )
+        Column {
+            ContentSettingsSection(
+                preferences = preferences,
+                settings = settings,
+                hasImagePermission = imagePicker.hasPermission,
+                onSelectImage = imagePicker.pick,
+                onShowFooterColorPicker = { showColor(ColorTarget.FOOTER) },
+                onShowProgressColorPicker = { showColor(ColorTarget.PROGRESS) },
+                onAddGoal = { show(SettingsDialog.GoalEditor(goal = null)) },
+                onEditGoal = { goal -> show(SettingsDialog.GoalEditor(goal)) }
+            )
+        }
 
         // Effects and animations (position, animation, glass, tree, fluid)
-        EffectsSettingsSection(
-            preferences = preferences,
-            settings = settings,
-            onShowGlassTintPicker = { showColor(ColorTarget.GLASS_TINT) },
-            onShowTreeTrunkColorPicker = { showColor(ColorTarget.TREE_TRUNK) },
-            onShowTreeLeafColorPicker = { showColor(ColorTarget.TREE_LEAF) },
-            onShowTreeBloomColorPicker = { showColor(ColorTarget.TREE_BLOOM) }
-        )
+        Column {
+            EffectsSettingsSection(
+                preferences = preferences,
+                settings = settings,
+                onShowGlassTintPicker = { showColor(ColorTarget.GLASS_TINT) },
+                onShowTreeTrunkColorPicker = { showColor(ColorTarget.TREE_TRUNK) },
+                onShowTreeLeafColorPicker = { showColor(ColorTarget.TREE_LEAF) },
+                onShowTreeBloomColorPicker = { showColor(ColorTarget.TREE_BLOOM) }
+            )
+        }
 
         // Extra room at the bottom (24dp spacing + 8dp)
         Spacer(modifier = Modifier.height(8.dp))
