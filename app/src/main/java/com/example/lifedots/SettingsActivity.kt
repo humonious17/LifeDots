@@ -1,6 +1,7 @@
 package com.example.lifedots
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -10,7 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.lifedots.preferences.Goal
 import com.example.lifedots.preferences.LifeDotsPreferences
+import com.example.lifedots.preferences.ThemeOption
 import com.example.lifedots.ui.components.ColorPickerDialog
 import com.example.lifedots.ui.components.DatePickerDialog
 import com.example.lifedots.ui.components.GoalEditorDialog
@@ -45,7 +47,8 @@ import com.example.lifedots.ui.settings.EffectsSettingsSection
 import com.example.lifedots.ui.settings.TimeScaleSettingsSection
 import com.example.lifedots.ui.theme.LifeDotsTheme
 import com.example.lifedots.ui.theme.lifeDotsBackground
-import com.example.lifedots.preferences.ThemeOption
+
+// region Activity
 
 class SettingsActivity : ComponentActivity() {
 
@@ -57,8 +60,8 @@ class SettingsActivity : ComponentActivity() {
         preferences = LifeDotsPreferences.getInstance(this)
 
         setContent {
-            val appearance by preferences.settingsFlow.collectAsState()
-            LifeDotsTheme(liquidGlass = appearance.theme == ThemeOption.LIQUID_GLASS) {
+            val settings by preferences.settingsFlow.collectAsState()
+            LifeDotsTheme(liquidGlass = settings.theme == ThemeOption.LIQUID_GLASS) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     SettingsScreen(
                         preferences = preferences,
@@ -70,77 +73,60 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
+// endregion
+
+// region Dialog state
+
+/** Every color the user can pick. Titles live in the dialog spec below. */
+private enum class ColorTarget {
+    BACKGROUND, FILLED_DOT, EMPTY_DOT, TODAY_DOT,
+    FOOTER, PROGRESS,
+    GLASS_TINT,
+    TREE_TRUNK, TREE_LEAF, TREE_BLOOM
+}
+
+private enum class DateTarget { BIRTH, CUSTOM_YEAR_START, CUSTOM_YEAR_END }
+
+/** Only one dialog is ever open, so one nullable value replaces a boolean per dialog. */
+private sealed interface SettingsDialog {
+    data class ColorPicker(val target: ColorTarget) : SettingsDialog
+    data class DatePicker(val target: DateTarget) : SettingsDialog
+    data class GoalEditor(val goal: Goal?) : SettingsDialog
+}
+
+private class ColorSpec<T>(val initial: T, val title: String, val onSelected: (T) -> Unit)
+
+private class DateSpec<T>(val initial: T, val onSelected: (T) -> Unit)
+
+// endregion
+
+// region Screen
+
+private val SectionSpacing = 24.dp
+
 @Composable
 fun SettingsScreen(
     preferences: LifeDotsPreferences,
     modifier: Modifier = Modifier
 ) {
     val settings by preferences.settingsFlow.collectAsState()
-    val context = LocalContext.current
+    var activeDialog by remember { mutableStateOf<SettingsDialog?>(null) }
+    val imagePicker = rememberImagePicker(preferences)
 
-    var showBgColorPicker by remember { mutableStateOf(false) }
-    var showFilledColorPicker by remember { mutableStateOf(false) }
-    var showEmptyColorPicker by remember { mutableStateOf(false) }
-    var showTodayColorPicker by remember { mutableStateOf(false) }
-    var showFooterColorPicker by remember { mutableStateOf(false) }
-    var showProgressColorPicker by remember { mutableStateOf(false) }
-    var showGoalEditor by remember { mutableStateOf(false) }
-    var editingGoal by remember { mutableStateOf<Goal?>(null) }
-    var showGlassTintPicker by remember { mutableStateOf(false) }
-    var showTreeTrunkColorPicker by remember { mutableStateOf(false) }
-    var showTreeLeafColorPicker by remember { mutableStateOf(false) }
-    var showTreeBloomColorPicker by remember { mutableStateOf(false) }
-    var showBirthDatePicker by remember { mutableStateOf(false) }
-    var showCustomYearStartDatePicker by remember { mutableStateOf(false) }
-    var showCustomYearEndDatePicker by remember { mutableStateOf(false) }
-
-    // Permission state for image picker
-    var hasImagePermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Manifest.permission.READ_MEDIA_IMAGES
-                } else {
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                }
-            ) == PackageManager.PERMISSION_GRANTED
-        )
+    fun show(dialog: SettingsDialog) {
+        activeDialog = dialog
     }
 
-    // Image picker launcher
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    it,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (e: SecurityException) {
-                // Permission not persistable, that's okay
-            }
-            preferences.setBackgroundUri(it.toString())
-        }
-    }
-
-    // Permission launcher
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasImagePermission = isGranted
-        if (isGranted) {
-            imagePickerLauncher.launch("image/*")
-        }
-    }
+    fun showColor(target: ColorTarget) = show(SettingsDialog.ColorPicker(target))
+    fun showDate(target: DateTarget) = show(SettingsDialog.DatePicker(target))
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .lifeDotsBackground()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(SectionSpacing),
+        verticalArrangement = Arrangement.spacedBy(SectionSpacing)
     ) {
         Text(
             text = stringResource(R.string.settings_title),
@@ -149,253 +135,217 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Time Scale & Calendars
+        // Time scale and calendars
         TimeScaleSettingsSection(
             preferences = preferences,
             settings = settings,
-            onShowCustomYearStartDatePicker = { showCustomYearStartDatePicker = true },
-            onShowCustomYearEndDatePicker = { showCustomYearEndDatePicker = true },
-            onShowBirthDatePicker = { showBirthDatePicker = true }
+            onShowCustomYearStartDatePicker = { showDate(DateTarget.CUSTOM_YEAR_START) },
+            onShowCustomYearEndDatePicker = { showDate(DateTarget.CUSTOM_YEAR_END) },
+            onShowBirthDatePicker = { showDate(DateTarget.BIRTH) }
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Appearance & Themes
+        // Appearance and themes
         AppearanceSettingsSection(
             preferences = preferences,
             settings = settings,
-            onShowBgColorPicker = { showBgColorPicker = true },
-            onShowFilledColorPicker = { showFilledColorPicker = true },
-            onShowEmptyColorPicker = { showEmptyColorPicker = true },
-            onShowTodayColorPicker = { showTodayColorPicker = true }
+            onShowBgColorPicker = { showColor(ColorTarget.BACKGROUND) },
+            onShowFilledColorPicker = { showColor(ColorTarget.FILLED_DOT) },
+            onShowEmptyColorPicker = { showColor(ColorTarget.EMPTY_DOT) },
+            onShowTodayColorPicker = { showColor(ColorTarget.TODAY_DOT) }
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Content & Overlays (Footer, Progress, Background, Goals)
+        // Content and overlays (footer, progress, background, goals)
         ContentSettingsSection(
             preferences = preferences,
             settings = settings,
-            hasImagePermission = hasImagePermission,
-            onSelectImage = {
-                if (hasImagePermission) {
-                    imagePickerLauncher.launch("image/*")
-                } else {
-                    permissionLauncher.launch(
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            Manifest.permission.READ_MEDIA_IMAGES
-                        } else {
-                            Manifest.permission.READ_EXTERNAL_STORAGE
-                        }
-                    )
-                }
-            },
-            onShowFooterColorPicker = { showFooterColorPicker = true },
-            onShowProgressColorPicker = { showProgressColorPicker = true },
-            onAddGoal = {
-                editingGoal = null
-                showGoalEditor = true
-            },
-            onEditGoal = { goal ->
-                editingGoal = goal
-                showGoalEditor = true
-            }
+            hasImagePermission = imagePicker.hasPermission,
+            onSelectImage = imagePicker.pick,
+            onShowFooterColorPicker = { showColor(ColorTarget.FOOTER) },
+            onShowProgressColorPicker = { showColor(ColorTarget.PROGRESS) },
+            onAddGoal = { show(SettingsDialog.GoalEditor(goal = null)) },
+            onEditGoal = { goal -> show(SettingsDialog.GoalEditor(goal)) }
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Effects & Animations (Position, Animation, Glass, Tree, Fluid)
+        // Effects and animations (position, animation, glass, tree, fluid)
         EffectsSettingsSection(
             preferences = preferences,
             settings = settings,
-            onShowGlassTintPicker = { showGlassTintPicker = true },
-            onShowTreeTrunkColorPicker = { showTreeTrunkColorPicker = true },
-            onShowTreeLeafColorPicker = { showTreeLeafColorPicker = true },
-            onShowTreeBloomColorPicker = { showTreeBloomColorPicker = true }
+            onShowGlassTintPicker = { showColor(ColorTarget.GLASS_TINT) },
+            onShowTreeTrunkColorPicker = { showColor(ColorTarget.TREE_TRUNK) },
+            onShowTreeLeafColorPicker = { showColor(ColorTarget.TREE_LEAF) },
+            onShowTreeBloomColorPicker = { showColor(ColorTarget.TREE_BLOOM) }
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        // Extra room at the bottom (24dp spacing + 8dp)
+        Spacer(modifier = Modifier.height(8.dp))
     }
 
-    // Color Picker Dialogs
-    if (showBgColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.customColors.backgroundColor,
-            title = "Background Color",
-            onColorSelected = {
-                preferences.setCustomBackgroundColor(it)
-                showBgColorPicker = false
-            },
-            onDismiss = { showBgColorPicker = false }
-        )
+    // Dialogs: what each color or date target reads and writes lives in one place each.
+
+    fun colorSpec(target: ColorTarget) = when (target) {
+        ColorTarget.BACKGROUND -> ColorSpec(
+            settings.customColors.backgroundColor, "Background Color"
+        ) { preferences.setCustomBackgroundColor(it) }
+
+        ColorTarget.FILLED_DOT -> ColorSpec(
+            settings.customColors.filledDotColor, "Filled Dots Color"
+        ) { preferences.setCustomFilledDotColor(it) }
+
+        ColorTarget.EMPTY_DOT -> ColorSpec(
+            settings.customColors.emptyDotColor, "Empty Dots Color"
+        ) { preferences.setCustomEmptyDotColor(it) }
+
+        ColorTarget.TODAY_DOT -> ColorSpec(
+            settings.customColors.todayDotColor, "Today's Dot Color"
+        ) { preferences.setCustomTodayDotColor(it) }
+
+        ColorTarget.FOOTER -> ColorSpec(
+            settings.footerTextSettings.color, "Footer Text Color"
+        ) { preferences.setFooterColor(it) }
+
+        ColorTarget.PROGRESS -> ColorSpec(
+            settings.progressSettings.color, "Progress Text Color"
+        ) { preferences.setProgressColor(it) }
+
+        ColorTarget.GLASS_TINT -> ColorSpec(
+            settings.glassEffectSettings.tint, "Glass Tint Color"
+        ) { preferences.setGlassTint(it) }
+
+        ColorTarget.TREE_TRUNK -> ColorSpec(
+            settings.treeEffectSettings.trunkColor, "Trunk Color"
+        ) { preferences.setTreeTrunkColor(it) }
+
+        ColorTarget.TREE_LEAF -> ColorSpec(
+            settings.treeEffectSettings.leafColor, "Leaf Color"
+        ) { preferences.setTreeLeafColor(it) }
+
+        ColorTarget.TREE_BLOOM -> ColorSpec(
+            settings.treeEffectSettings.bloomColor, "Bloom Color"
+        ) { preferences.setTreeBloomColor(it) }
     }
 
-    if (showFilledColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.customColors.filledDotColor,
-            title = "Filled Dots Color",
-            onColorSelected = {
-                preferences.setCustomFilledDotColor(it)
-                showFilledColorPicker = false
-            },
-            onDismiss = { showFilledColorPicker = false }
-        )
+    fun dateSpec(target: DateTarget) = when (target) {
+        DateTarget.BIRTH -> DateSpec(
+            settings.lifeSettings.birthDate
+        ) { preferences.setLifeBirthDate(it) }
+
+        DateTarget.CUSTOM_YEAR_START -> DateSpec(
+            settings.customYearSettings.startDate
+        ) { preferences.setCustomYearStartDate(it) }
+
+        DateTarget.CUSTOM_YEAR_END -> DateSpec(
+            settings.customYearSettings.endDate
+        ) { preferences.setCustomYearEndDate(it) }
     }
 
-    if (showEmptyColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.customColors.emptyDotColor,
-            title = "Empty Dots Color",
-            onColorSelected = {
-                preferences.setCustomEmptyDotColor(it)
-                showEmptyColorPicker = false
-            },
-            onDismiss = { showEmptyColorPicker = false }
-        )
-    }
+    val dismiss = { activeDialog = null }
 
-    if (showTodayColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.customColors.todayDotColor,
-            title = "Today's Dot Color",
-            onColorSelected = {
-                preferences.setCustomTodayDotColor(it)
-                showTodayColorPicker = false
-            },
-            onDismiss = { showTodayColorPicker = false }
-        )
-    }
+    when (val dialog = activeDialog) {
+        null -> Unit
 
-    if (showFooterColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.footerTextSettings.color,
-            title = "Footer Text Color",
-            onColorSelected = {
-                preferences.setFooterColor(it)
-                showFooterColorPicker = false
-            },
-            onDismiss = { showFooterColorPicker = false }
-        )
-    }
+        is SettingsDialog.ColorPicker -> {
+            val spec = colorSpec(dialog.target)
+            ColorPickerDialog(
+                initialColor = spec.initial,
+                title = spec.title,
+                onColorSelected = {
+                    spec.onSelected(it)
+                    dismiss()
+                },
+                onDismiss = dismiss
+            )
+        }
 
-    if (showProgressColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.progressSettings.color,
-            title = "Progress Text Color",
-            onColorSelected = {
-                preferences.setProgressColor(it)
-                showProgressColorPicker = false
-            },
-            onDismiss = { showProgressColorPicker = false }
-        )
-    }
+        is SettingsDialog.DatePicker -> {
+            val spec = dateSpec(dialog.target)
+            DatePickerDialog(
+                initialDate = spec.initial,
+                onDateSelected = {
+                    spec.onSelected(it)
+                    dismiss()
+                },
+                onDismiss = dismiss
+            )
+        }
 
-    // Goal editor dialog
-    if (showGoalEditor) {
-        GoalEditorDialog(
-            goal = editingGoal,
-            onSave = { goal ->
-                if (editingGoal != null) {
-                    preferences.updateGoal(goal)
-                } else {
-                    preferences.addGoal(goal)
-                }
-            },
-            onDelete = editingGoal?.let { { preferences.deleteGoal(it.id) } },
-            onDismiss = {
-                showGoalEditor = false
-                editingGoal = null
-            }
-        )
-    }
-
-    // Glass tint color picker
-    if (showGlassTintPicker) {
-        ColorPickerDialog(
-            initialColor = settings.glassEffectSettings.tint,
-            title = "Glass Tint Color",
-            onColorSelected = {
-                preferences.setGlassTint(it)
-                showGlassTintPicker = false
-            },
-            onDismiss = { showGlassTintPicker = false }
-        )
-    }
-
-    // Tree trunk color picker
-    if (showTreeTrunkColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.treeEffectSettings.trunkColor,
-            title = "Trunk Color",
-            onColorSelected = {
-                preferences.setTreeTrunkColor(it)
-                showTreeTrunkColorPicker = false
-            },
-            onDismiss = { showTreeTrunkColorPicker = false }
-        )
-    }
-
-    // Tree leaf color picker
-    if (showTreeLeafColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.treeEffectSettings.leafColor,
-            title = "Leaf Color",
-            onColorSelected = {
-                preferences.setTreeLeafColor(it)
-                showTreeLeafColorPicker = false
-            },
-            onDismiss = { showTreeLeafColorPicker = false }
-        )
-    }
-
-    // Tree bloom color picker
-    if (showTreeBloomColorPicker) {
-        ColorPickerDialog(
-            initialColor = settings.treeEffectSettings.bloomColor,
-            title = "Bloom Color",
-            onColorSelected = {
-                preferences.setTreeBloomColor(it)
-                showTreeBloomColorPicker = false
-            },
-            onDismiss = { showTreeBloomColorPicker = false }
-        )
-    }
-
-    // Birth date picker dialog
-    if (showBirthDatePicker) {
-        DatePickerDialog(
-            initialDate = settings.lifeSettings.birthDate,
-            onDateSelected = {
-                preferences.setLifeBirthDate(it)
-                showBirthDatePicker = false
-            },
-            onDismiss = { showBirthDatePicker = false }
-        )
-    }
-
-    // Custom year start date picker dialog
-    if (showCustomYearStartDatePicker) {
-        DatePickerDialog(
-            initialDate = settings.customYearSettings.startDate,
-            onDateSelected = {
-                preferences.setCustomYearStartDate(it)
-                showCustomYearStartDatePicker = false
-            },
-            onDismiss = { showCustomYearStartDatePicker = false }
-        )
-    }
-
-    // Custom year end date picker dialog
-    if (showCustomYearEndDatePicker) {
-        DatePickerDialog(
-            initialDate = settings.customYearSettings.endDate,
-            onDateSelected = {
-                preferences.setCustomYearEndDate(it)
-                showCustomYearEndDatePicker = false
-            },
-            onDismiss = { showCustomYearEndDatePicker = false }
-        )
+        is SettingsDialog.GoalEditor -> {
+            val editing = dialog.goal
+            GoalEditorDialog(
+                goal = editing,
+                onSave = { goal ->
+                    if (editing != null) preferences.updateGoal(goal) else preferences.addGoal(goal)
+                },
+                onDelete = editing?.let { { preferences.deleteGoal(it.id) } },
+                onDismiss = dismiss
+            )
+        }
     }
 }
+
+// endregion
+
+// region Image picker
+
+private val ImagePermission: String =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_IMAGES
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+
+private class ImagePicker(
+    val hasPermission: Boolean,
+    val pick: () -> Unit
+)
+
+/**
+ * Handles the permission check, the permission request and the image picker.
+ * Calling [ImagePicker.pick] launches the picker, asking for permission first if needed.
+ */
+@Composable
+private fun rememberImagePicker(preferences: LifeDotsPreferences): ImagePicker {
+    val context = LocalContext.current
+
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, ImagePermission) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val pickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: SecurityException) {
+                // Not persistable, that's okay
+            }
+            preferences.setBackgroundUri(it.toString())
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasPermission = isGranted
+        if (isGranted) pickerLauncher.launch("image/*")
+    }
+
+    return ImagePicker(
+        hasPermission = hasPermission,
+        pick = {
+            if (hasPermission) {
+                pickerLauncher.launch("image/*")
+            } else {
+                permissionLauncher.launch(ImagePermission)
+            }
+        }
+    )
+}
+
+// endregion
