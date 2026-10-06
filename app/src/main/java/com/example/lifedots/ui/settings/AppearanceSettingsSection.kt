@@ -21,7 +21,6 @@ import com.example.lifedots.ui.components.ColorButton
 import kotlin.math.roundToInt
 
 private val SectionGap = 24.dp
-private val ExpandedGap = 8.dp
 
 // region Entry point
 
@@ -423,87 +422,6 @@ private fun ViewModeSection(preferences: LifeDotsPreferences, settings: Wallpape
             }
         }
     }
-}
-
-// endregion
-
-// region Shared building blocks
-
-@Composable
-private fun Gap(height: Dp) = Spacer(modifier = Modifier.height(height))
-
-/** Equal-width row of option buttons. Children should use Modifier.weight(1f). */
-@Composable
-private fun OptionRow(content: @Composable RowScope.() -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        content = content
-    )
-}
-
-/** Rounded surface with the standard 20dp inner padding. */
-@Composable
-private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
-    ) {
-        Column(modifier = Modifier.padding(20.dp), content = content)
-    }
-}
-
-@Composable
-private fun Expandable(visible: Boolean, content: @Composable ColumnScope.() -> Unit) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = expandVertically(),
-        exit = shrinkVertically()
-    ) {
-        Column(content = content)
-    }
-}
-
-/** A card that expands below a section, separated from it by a small gap. */
-@Composable
-private fun ExpandableCard(visible: Boolean, content: @Composable ColumnScope.() -> Unit) {
-    Expandable(visible = visible) {
-        Gap(ExpandedGap)
-        SettingsCard(content = content)
-    }
-}
-
-@Composable
-private fun LabeledSlider(
-    label: String,
-    valueText: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    onValueChange: (Float) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = valueText,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
-    }
-    Slider(
-        value = value,
-        onValueChange = onValueChange,
-        valueRange = valueRange
-    )
 }
 
 // endregion
