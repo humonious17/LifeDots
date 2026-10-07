@@ -12,7 +12,7 @@ For an update to an existing debug installation, build `./gradlew assembleDebug`
 
 ## Release signing
 
-Plain release builds remain unsigned unless a signing key is supplied. Unsigned APKs cannot be installed. Use Android Studio's **Generate Signed App Bundle / APK**, or set `LIFEDOTS_KEYSTORE` (absolute path), `LIFEDOTS_STORE_PASSWORD`, `LIFEDOTS_KEY_ALIAS`, and `LIFEDOTS_KEY_PASSWORD` in your local environment and run `./gradlew assembleRelease`. Use the original signing key to update an existing installation. Never commit keys or passwords.
+Release packaging now fails with an actionable error unless a signing key is supplied. Unsigned APKs cannot be installed. Use Android Studio's **Generate Signed App Bundle / APK**, or set `LIFEDOTS_KEYSTORE` (absolute path), `LIFEDOTS_STORE_PASSWORD`, `LIFEDOTS_KEY_ALIAS`, and `LIFEDOTS_KEY_PASSWORD` in your local environment and run `./gradlew assembleRelease`. Use the original signing key to update an existing installation. Never commit keys or passwords.
 
 ## If Android says “App not installed”
 
@@ -28,3 +28,9 @@ Record the `INSTALL_FAILED_...` result. A certificate mismatch (`UPDATE_INCOMPAT
 When opening an APK on the phone, allow installation for the specific file manager/browser you use if Android requests it. Transfer the complete APK, not an AAB or an unsigned release artifact.
 
 Reference: https://developer.android.com/studio/publish/app-signing
+
+## Build requirements and image access
+
+Use JDK 17, Android SDK platform 36, and the checked-in Gradle wrapper. If Java is not on PATH, set JAVA_HOME to your JDK directory. Version 1.0.1 uses version code 2; updates still require the same signing key, and installations with a higher version code require a later build.
+
+Background images use Android's document picker and retain read access across restarts without broad photo/storage permissions. Re-select previously configured images once to establish persistent access.

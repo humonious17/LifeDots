@@ -1,10 +1,6 @@
 package com.example.lifedots
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,7 +30,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import com.example.lifedots.preferences.Goal
 import com.example.lifedots.preferences.LifeDotsPreferences
 import com.example.lifedots.preferences.ThemeOption
@@ -165,8 +160,7 @@ fun SettingsScreen(
             ContentSettingsSection(
                 preferences = preferences,
                 settings = settings,
-                hasImagePermission = imagePicker.hasPermission,
-                onSelectImage = imagePicker.pick,
+                onSelectImage = imagePicker,
                 onShowFooterColorPicker = { showColor(ColorTarget.FOOTER) },
                 onShowProgressColorPicker = { showColor(ColorTarget.PROGRESS) },
                 onAddGoal = { show(SettingsDialog.GoalEditor(goal = null)) },
@@ -294,68 +288,24 @@ fun SettingsScreen(
 
 // endregion
 
-// region Image picker
-
-private val ImagePermission: String =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Manifest.permission.READ_MEDIA_IMAGES
-    } else {
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    }
-
-private class ImagePicker(
-    val hasPermission: Boolean,
-    val pick: () -> Unit
-)
-
-/**
- * Handles the permission check, the permission request and the image picker.
- * Calling [ImagePicker.pick] launches the picker, asking for permission first if needed.
- */
+// The document picker grants access to the selected image without storage permissions.
 @Composable
-private fun rememberImagePicker(preferences: LifeDotsPreferences): ImagePicker {
+private fun rememberImagePicker(preferences: LifeDotsPreferences): () -> Unit {
     val context = LocalContext.current
-
-    var hasPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, ImagePermission) ==
-                PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val pickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
             try {
                 context.contentResolver.takePersistableUriPermission(
-                    it,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-            } catch (e: SecurityException) {
-                // Not persistable, that's okay
-            }
-            preferences.setBackgroundUri(it.toString())
-        }
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasPermission = isGranted
-        if (isGranted) pickerLauncher.launch("image/*")
-    }
-
-    return ImagePicker(
-        hasPermission = hasPermission,
-        pick = {
-            if (hasPermission) {
-                pickerLauncher.launch("image/*")
-            } else {
-                permissionLauncher.launch(ImagePermission)
+                preferences.setBackgroundUri(uri.toString())
+            } catch (_: SecurityException) {
+                android.widget.Toast.makeText(
+                    context, "Unable to keep access to this image. Please select another image.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
-    )
+    }
+    return { launcher.launch(arrayOf("image/*")) }
 }
-
-// endregion

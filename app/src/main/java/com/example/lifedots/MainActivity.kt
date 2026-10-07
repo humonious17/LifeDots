@@ -1,6 +1,7 @@
 package com.example.lifedots
 
 import android.app.WallpaperManager
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
@@ -80,7 +81,18 @@ class MainActivity : ComponentActivity() {
                 ComponentName(this@MainActivity, LifeDotsWallpaperService::class.java)
             )
         }
-        startActivity(intent)
+        try {
+            startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            try {
+                startActivity(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
+            } catch (_: ActivityNotFoundException) {
+                android.widget.Toast.makeText(
+                    this, "This device does not provide a live wallpaper picker.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun openSettings() {

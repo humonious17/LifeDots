@@ -16,6 +16,7 @@ object ImageUtils {
      * Load and scale a bitmap from URI to fit target dimensions
      */
     fun loadScaledBitmap(context: Context, uri: Uri, targetWidth: Int, targetHeight: Int): Bitmap? {
+        if (targetWidth <= 0 || targetHeight <= 0) return null
         return try {
             val inputStream = context.contentResolver.openInputStream(uri)
                 ?: return null
@@ -23,8 +24,8 @@ object ImageUtils {
             // Decode bounds first
             val options = BitmapFactory.Options()
             options.inJustDecodeBounds = true
-            BitmapFactory.decodeStream(inputStream, null, options)
-            inputStream.close()
+            inputStream.use { BitmapFactory.decodeStream(it, null, options) }
+            if (options.outWidth <= 0 || options.outHeight <= 0) return null
 
             // Calculate sample size
             options.inSampleSize = calculateInSampleSize(options, targetWidth, targetHeight)
@@ -33,8 +34,7 @@ object ImageUtils {
             // Decode actual bitmap
             val inputStream2 = context.contentResolver.openInputStream(uri)
                 ?: return null
-            val bitmap = BitmapFactory.decodeStream(inputStream2, null, options)
-            inputStream2.close()
+            val bitmap = inputStream2.use { BitmapFactory.decodeStream(it, null, options) }
 
             if (bitmap == null) return null
 
@@ -78,20 +78,23 @@ object ImageUtils {
 
         return try {
             val rs = RenderScript.create(context)
-            val input = Allocation.createFromBitmap(rs, bitmap)
-            val output = Allocation.createTyped(rs, input.type)
-            val script = ScriptIntrinsicBlur.create(rs, Element.U8_4(rs))
-            script.setRadius(clampedRadius)
-            script.setInput(input)
-            script.forEach(output)
-            val blurredBitmap = Bitmap.createBitmap(
-                bitmap.width,
-                bitmap.height,
-                bitmap.config ?: Bitmap.Config.ARGB_8888
-            )
-            output.copyTo(blurredBitmap)
-            rs.destroy()
-            blurredBitmap
+            try {
+                val input = Allocation.createFromBitmap(rs, bitmap)
+                val output = Allocation.createTyped(rs, input.type)
+                val script = ScriptIntrinsicBlur.create(rs, Element.U8_4(rs))
+                script.setRadius(clampedRadius)
+                script.setInput(input)
+                script.forEach(output)
+                val blurredBitmap = Bitmap.createBitmap(
+                    bitmap.width,
+                    bitmap.height,
+                    bitmap.config ?: Bitmap.Config.ARGB_8888
+                )
+                output.copyTo(blurredBitmap)
+                blurredBitmap
+            } finally {
+                rs.destroy()
+            }
         } catch (e: Exception) {
             bitmap
         }

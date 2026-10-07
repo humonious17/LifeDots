@@ -12,14 +12,19 @@ android {
         applicationId = "com.example.lifedots"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // Supply these through your environment to build a distributable signed release.
     val releaseStore = providers.environmentVariable("LIFEDOTS_KEYSTORE").orNull
+    val signingFields = listOf("LIFEDOTS_KEYSTORE", "LIFEDOTS_STORE_PASSWORD", "LIFEDOTS_KEY_ALIAS", "LIFEDOTS_KEY_PASSWORD")
+    val configuredSigningFields = signingFields.filter { !providers.environmentVariable(it).orNull.isNullOrBlank() }
+    require(configuredSigningFields.isEmpty() || configuredSigningFields.size == signingFields.size) {
+        "Release signing requires all four LIFEDOTS signing environment variables."
+    }
     signingConfigs {
         if (releaseStore != null) {
             create("distribution") {
@@ -82,4 +87,12 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+// Fail clearly instead of producing an unsigned APK that Android cannot install.
+tasks.matching { it.name == "validateSigningRelease" || it.name == "packageRelease" || it.name == "packageReleaseBundle" }.configureEach {
+    doFirst {
+        check(android.buildTypes.getByName("release").signingConfig != null) {
+            "Release signing is not configured. Set the LIFEDOTS signing variables or run assembleSideload for an installable Preview APK."
+        }
+    }
 }

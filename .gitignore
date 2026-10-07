@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Kotlin compiler state and local signing material
+.kotlin/
+*.jks
+*.keystore

@@ -28,7 +28,6 @@ private val SectionGap = 24.dp
 fun ContentSettingsSection(
     preferences: LifeDotsPreferences,
     settings: WallpaperSettings,
-    hasImagePermission: Boolean,
     onSelectImage: () -> Unit,
     onShowFooterColorPicker: () -> Unit,
     onShowProgressColorPicker: () -> Unit,

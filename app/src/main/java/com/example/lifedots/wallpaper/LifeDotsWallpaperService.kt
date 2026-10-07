@@ -4,23 +4,18 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Paint
-import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
-import com.example.lifedots.preferences.BackgroundSettings
 import com.example.lifedots.preferences.GoalPosition
 import com.example.lifedots.preferences.LifeDotsPreferences
 import com.example.lifedots.preferences.ProgressPosition
 import com.example.lifedots.preferences.TimeScale
 import com.example.lifedots.preferences.ViewMode
 import com.example.lifedots.preferences.WallpaperSettings
-import com.example.lifedots.util.ImageUtils
 import com.example.lifedots.wallpaper.renderer.DotGridRenderer
 import com.example.lifedots.wallpaper.renderer.FluidEffectRenderer
 import com.example.lifedots.wallpaper.renderer.GlassEffectRenderer
@@ -50,44 +45,39 @@ class LifeDotsWallpaperService : WallpaperService() {
         private val dotGridRenderer = DotGridRenderer()
         private val overlayTextRenderer = OverlayTextRenderer()
 
-        // Animation state
         private var animationTime = 0L
-        private val animationFrameRate = 60 // FPS
-        private val animationFrameDelay = 1000L / animationFrameRate
-
-        // Animation loop
-        private val animationRunner = object : Runnable {
-            override fun run() {
-                if (visible && preferences.settings.animationSettings.enabled) {
-                    animationTime = System.currentTimeMillis()
-                    draw()
-                    handler.postDelayed(this, animationFrameDelay)
-                }
-            }
-        }
-
-        // Fluid effect state - for continuous motion
         private var fluidPhase = 0f
-        private val fluidRunner = object : Runnable {
+        private var lastFrameTime = 0L
+        private val backgroundRenderer = BackgroundImageRenderer(applicationContext)
+
+        // One loop prevents duplicate draws when both effects are enabled.
+        private val frameRunner = object : Runnable {
             override fun run() {
-                if (visible && preferences.settings.fluidEffectSettings.enabled) {
-                    fluidPhase += 0.02f * preferences.settings.fluidEffectSettings.flowSpeed
-                    if (fluidPhase > 2 * Math.PI) fluidPhase = 0f
-                    draw()
-                    handler.postDelayed(this, 50)
+                if (!visible) return
+                val settings = preferences.settings
+                val now = android.os.SystemClock.uptimeMillis()
+                val elapsed = if (lastFrameTime == 0L) 0L else (now - lastFrameTime).coerceAtMost(100L)
+                lastFrameTime = now
+                animationTime = System.currentTimeMillis()
+                if (settings.fluidEffectSettings.enabled) {
+                    fluidPhase = (fluidPhase + elapsed / 50f * 0.02f *
+                        settings.fluidEffectSettings.flowSpeed) % (2f * Math.PI.toFloat())
+                }
+                draw()
+                if (settings.animationSettings.enabled || settings.fluidEffectSettings.enabled) {
+                    handler.postDelayed(this, if (settings.animationSettings.enabled) 16L else 50L)
                 }
             }
         }
 
-        // Background image caching
-        private var cachedBackgroundBitmap: Bitmap? = null
-        private var cachedBackgroundUri: String? = null
-        private var cachedScreenWidth = 0
-        private var cachedScreenHeight = 0
+        private fun restartRendering() {
+            handler.removeCallbacks(frameRunner)
+            lastFrameTime = 0L
+            if (visible) handler.post(frameRunner)
+        }
 
         private val settingsChangeListener: () -> Unit = {
-            lastDrawnDay = -1
-            handler.post { draw() }
+            handler.post { restartRendering() }
         }
 
         private val dateChangeReceiver = object : BroadcastReceiver() {
@@ -133,29 +123,15 @@ class LifeDotsWallpaperService : WallpaperService() {
             }
             LifeDotsPreferences.removeWallpaperChangeListener(settingsChangeListener)
             handler.removeCallbacks(midnightChecker)
-            handler.removeCallbacks(animationRunner)
-            handler.removeCallbacks(fluidRunner)
+            backgroundRenderer.clear()
             handler.removeCallbacksAndMessages(null)
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
             this.visible = visible
-            if (visible) {
-                draw()
-                scheduleNextMidnightCheck()
-                // Start animation loop if animations are enabled
-                if (preferences.settings.animationSettings.enabled) {
-                    animationTime = System.currentTimeMillis()
-                    handler.post(animationRunner)
-                }
-                // Start fluid loop if fluid effects are enabled
-                if (preferences.settings.fluidEffectSettings.enabled) {
-                    handler.post(fluidRunner)
-                }
-            } else {
-                handler.removeCallbacks(animationRunner)
-                handler.removeCallbacks(fluidRunner)
-            }
+            restartRendering()
+            if (visible) scheduleNextMidnightCheck()
+            else handler.removeCallbacks(midnightChecker)
         }
 
         override fun onSurfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -171,6 +147,7 @@ class LifeDotsWallpaperService : WallpaperService() {
 
         private fun scheduleNextMidnightCheck() {
             handler.removeCallbacks(midnightChecker)
+            if (!visible) return
             val now = Calendar.getInstance()
             val midnight = Calendar.getInstance().apply {
                 add(Calendar.DAY_OF_YEAR, 1)
@@ -230,7 +207,7 @@ class LifeDotsWallpaperService : WallpaperService() {
             canvas.drawColor(colors.background)
 
             // Feature 1: Draw background image if enabled
-            drawBackgroundImage(canvas, settings.backgroundSettings, colors.background)
+            backgroundRenderer.draw(canvas, settings.backgroundSettings, colors.background)
 
             // Draw glass effect background if enabled
             if (settings.glassEffectSettings.enabled) {
@@ -349,59 +326,5 @@ class LifeDotsWallpaperService : WallpaperService() {
             }
         }
 
-        private fun drawBackgroundImage(canvas: Canvas, bgSettings: BackgroundSettings, fallbackColor: Int) {
-            if (!bgSettings.enabled || bgSettings.imageUri == null) return
-
-            try {
-                val bitmap = loadBackgroundBitmap(bgSettings.imageUri!!, canvas.width, canvas.height)
-                if (bitmap != null) {
-                    val finalBitmap = if (bgSettings.blurRadius > 0) {
-                        applyBlur(bitmap, bgSettings.blurRadius)
-                    } else {
-                        bitmap
-                    }
-
-                    val paint = Paint()
-                    paint.alpha = (bgSettings.opacity * 255).toInt()
-                    canvas.drawBitmap(finalBitmap, 0f, 0f, paint)
-
-                    val overlayPaint = Paint()
-                    overlayPaint.color = fallbackColor
-                    overlayPaint.alpha = ((1 - bgSettings.opacity) * 200).toInt()
-                    canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), overlayPaint)
-                }
-            } catch (e: Exception) {
-                // Silently fail - background is optional
-            }
-        }
-
-        private fun loadBackgroundBitmap(uriString: String, targetWidth: Int, targetHeight: Int): Bitmap? {
-            if (cachedBackgroundBitmap != null &&
-                cachedBackgroundUri == uriString &&
-                cachedScreenWidth == targetWidth &&
-                cachedScreenHeight == targetHeight) {
-                return cachedBackgroundBitmap
-            }
-
-            return try {
-                val uri = Uri.parse(uriString)
-                val scaledBitmap = ImageUtils.loadScaledBitmap(applicationContext, uri, targetWidth, targetHeight)
-                    ?: return null
-
-                cachedBackgroundBitmap?.recycle()
-                cachedBackgroundBitmap = scaledBitmap
-                cachedBackgroundUri = uriString
-                cachedScreenWidth = targetWidth
-                cachedScreenHeight = targetHeight
-
-                scaledBitmap
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-        private fun applyBlur(bitmap: Bitmap, radius: Float): Bitmap {
-            return ImageUtils.applyBlur(applicationContext, bitmap, radius)
-        }
     }
 }
